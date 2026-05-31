@@ -1134,14 +1134,20 @@ def _render_hops(hops: list[sqlite3.Row], hop_col) -> None:
 
 
 def _section_journal(project_id: int) -> None:
-    # Build device/circuit options for linking
+    # Build device/circuit options for the combo field
     devices = db.get_devices(project_id)
     circuits = db.get_circuits(project_id)
-    link_options: dict[str, tuple[int | None, int | None]] = {"(none)": (None, None)}
+    # Map display text -> (device_id, circuit_id)
+    link_lookup: dict[str, tuple[int | None, int | None]] = {}
+    combo_options: list[str] = []
     for d in devices:
-        link_options[f"🖥 {d['hostname']}"] = (d["id"], None)
+        label = f"🖥 {d['hostname']}"
+        combo_options.append(label)
+        link_lookup[label] = (d["id"], None)
     for c in circuits:
-        link_options[f"🔌 {c['cid']}"] = (None, c["id"])
+        label = f"🔌 {c['cid']}"
+        combo_options.append(label)
+        link_lookup[label] = (None, c["id"])
 
     # ── Export function ───────────────────────────────────────────────────────
     def export_journal() -> None:
@@ -1174,35 +1180,28 @@ def _section_journal(project_id: int) -> None:
                     f"font-size:22px; font-weight:600; color:{TEXT_PRI};"
                 )
 
-            # Right: link selector + Add + Export
+            # Right: Add + Export buttons
             with ui.row().style("align-items:center; gap:10px;"):
-                link_sel = (
-                    ui.select(
-                        list(link_options.keys()),
-                        value="(none)",
-                        label="Link to device/circuit (optional)",
-                    )
-                    .props("outlined dense")
-                    .style("min-width:250px;")
-                )
 
                 def do_add() -> None:
+                    title_val = title_combo.value.strip() if title_combo.value else ""
+                    if not title_val:
+                        ui.notify("Title / subject is required", color="negative")
+                        return
                     if not entry_in.value.strip():
                         ui.notify("Note cannot be empty", color="negative")
                         return
-                    device_id, circuit_id = link_options.get(
-                        link_sel.value, (None, None)
-                    )
+                    # Check if the title matches a device/circuit for linking
+                    device_id, circuit_id = link_lookup.get(title_val, (None, None))
                     db.add_journal_entry(
                         project_id,
                         entry_in.value.strip(),
-                        title=title_in.value.strip(),
+                        title=title_val,
                         device_id=device_id,
                         circuit_id=circuit_id,
                     )
-                    title_in.value = ""
+                    title_combo.value = ""
                     entry_in.value = ""
-                    link_sel.value = "(none)"
                     ui.notify("Note added — see sidebar", color="positive")
 
                 ui.button("+ ADD", on_click=do_add).style(
@@ -1216,12 +1215,19 @@ def _section_journal(project_id: int) -> None:
                     f"padding:8px 20px; border-radius:6px; border:none; cursor:pointer;"
                 )
 
-    # ── Title + Notes input (full width, scales with window) ──────────────────
-    title_in = (
-        ui.input("Title (optional)")
+    # ── Combined title/link field (select a device/circuit or type a custom title)
+    title_combo = (
+        ui.select(
+            combo_options,
+            with_input=True,
+            new_value_mode="add-unique",
+            label="Title — select a device/circuit or type a subject (required)",
+        )
         .props("outlined dense")
         .style("width:100%; margin-bottom:8px;")
     )
+
+    # ── Notes input (full width, scales with window) ──────────────────────────
     entry_in = (
         ui.textarea("Type a note, command, or observation...")
         .props("outlined autogrow")
@@ -1232,9 +1238,9 @@ def _section_journal(project_id: int) -> None:
     )
 
     # Hint text
-    ui.label("Notes appear in the sidebar under Journal. Click one to view it.").style(
-        f"font-size:12px; color:{TEXT_MUTED}; margin-top:16px;"
-    )
+    ui.label(
+        "Select a device/circuit or type a custom title. Notes appear in the sidebar."
+    ).style(f"font-size:12px; color:{TEXT_MUTED}; margin-top:16px;")
 
 
 def _journal_entry_card(
