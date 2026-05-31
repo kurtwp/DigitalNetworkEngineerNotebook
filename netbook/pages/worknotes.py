@@ -1441,7 +1441,7 @@ def _section_journal_entry(
     # ── Edit dialog ───────────────────────────────────────────────────────────
     with ui.dialog() as edit_dlg, ui.card().style(
         f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:10px;"
-        f"padding:26px; min-width:600px;"
+        f"padding:26px; min-width:600px; min-height:400px; resize:both; overflow:auto;"
     ):
         ui.label("Edit Journal Entry").style(
             f"font-size:17px; font-weight:600; color:{TEXT_PRI}; margin-bottom:18px;"
@@ -1451,10 +1451,10 @@ def _section_journal_entry(
         )
         edit_text = (
             ui.textarea("Entry", value=text)
-            .props("outlined autogrow")
+            .props("outlined")
             .style(
                 "width:100%; margin-top:10px; font-family:'JetBrains Mono',monospace;"
-                "font-size:13px; min-height:150px;"
+                "font-size:13px; min-height:250px; resize:both; overflow:auto;"
             )
         )
         with ui.row().style("margin-top:20px; gap:10px; justify-content:flex-end;"):

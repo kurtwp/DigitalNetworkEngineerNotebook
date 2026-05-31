@@ -126,6 +126,9 @@ def apply_global_styles() -> None:
       /* Code textarea */
       .code-area textarea {{ font-family: 'JetBrains Mono', monospace !important; font-size: 12.5px !important; line-height: 1.6 !important; color: {ACCENT_DIM} !important; background: #f8f9fb !important; }}
 
+      /* Allow manual textarea resize */
+      .q-field__native[style*="resize"] {{ resize: both !important; overflow: auto !important; }}
+
       /* Card */
       .nb-card {{ background: {PANEL_BG}; border: 1px solid {BORDER}; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }}
       .nb-card:hover {{ border-color: #c8cdd5; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }}
