@@ -1138,7 +1138,9 @@ def _section_journal(project_id: int) -> None:
                 link = f"  [device: {e['hostname']}]"
             elif e["cid"]:
                 link = f"  [circuit: {e['cid']}]"
-            title_str = f"  **{e['title']}**\n" if e.get("title") else ""
+            title_str = (
+                f"  **{e['title']}**\n" if ("title" in e.keys() and e["title"]) else ""
+            )
             lines.append(f"[{ts}]{link}\n{title_str}{e['entry']}\n")
         content = "\n".join(lines)
         ui.download(content.encode("utf-8"), "journal.md")
@@ -1205,7 +1207,7 @@ def _section_journal(project_id: int) -> None:
             label="Title — type a subject or select a device/circuit (required)",
             value="",
         )
-        .props('outlined dense use-input input-debounce="0" behavior="dialog"')
+        .props('outlined dense input-debounce="0"')
         .classes("w-full mb-2")
     )
 
