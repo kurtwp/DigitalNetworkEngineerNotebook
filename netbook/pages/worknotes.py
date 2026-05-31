@@ -1143,6 +1143,9 @@ def _section_journal(project_id: int) -> None:
         content = "\n".join(lines)
         ui.download(content.encode("utf-8"), "journal.md")
 
+    # ── Container for input references (avoids Python closure scoping issue) ──
+    inputs: dict = {}
+
     # ── Sticky header row: title left, controls right ─────────────────────────
     with ui.element("div").classes("sticky top-0 z-10 w-full pb-3").style(
         f"background:{DARK_BG};"
@@ -1159,24 +1162,25 @@ def _section_journal(project_id: int) -> None:
             with ui.row().classes("items-center gap-2.5"):
 
                 def do_add() -> None:
-                    title_val = title_combo.value.strip() if title_combo.value else ""
+                    title_val = (
+                        inputs["title"].value.strip() if inputs["title"].value else ""
+                    )
                     if not title_val:
                         ui.notify("Title / subject is required", color="negative")
                         return
-                    if not entry_in.value.strip():
+                    if not inputs["entry"].value.strip():
                         ui.notify("Note cannot be empty", color="negative")
                         return
-                    # Check if the title matches a device/circuit for linking
                     device_id, circuit_id = link_lookup.get(title_val, (None, None))
                     db.add_journal_entry(
                         project_id,
-                        entry_in.value.strip(),
+                        inputs["entry"].value.strip(),
                         title=title_val,
                         device_id=device_id,
                         circuit_id=circuit_id,
                     )
-                    title_combo.value = ""
-                    entry_in.value = ""
+                    inputs["title"].value = ""
+                    inputs["entry"].value = ""
                     ui.notify("Note added — see sidebar", color="positive")
 
                 ui.button("+ ADD", on_click=do_add).classes(
@@ -1192,9 +1196,8 @@ def _section_journal(project_id: int) -> None:
                     f"padding:8px 20px; border:none;"
                 )
 
-    # ── Combined title/link field (select a device/circuit or type a custom title)
-    # Use ui.select with with_input for dropdown + free text
-    title_combo = (
+    # ── Title/link field ──────────────────────────────────────────────────────
+    inputs["title"] = (
         ui.select(
             options=combo_options,
             with_input=True,
@@ -1207,7 +1210,7 @@ def _section_journal(project_id: int) -> None:
     )
 
     # ── Notes input (full width, scales with window) ──────────────────────────
-    entry_in = (
+    inputs["entry"] = (
         ui.textarea("Type a note, command, or observation...")
         .props("outlined autogrow")
         .classes("w-full font-mono text-[13px]")
