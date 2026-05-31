@@ -1,5 +1,7 @@
 """Work notes page — project detail view with sidebar navigation."""
 
+import csv
+import io
 import json
 import logging
 import sqlite3
@@ -148,16 +150,120 @@ def _section_overview(project_id: int, project: sqlite3.Row) -> None:
 
 def _section_devices(project_id: int) -> None:
     _page_header("dns", "Devices")
-    devices_col = ui.column().style("gap:12px; width:100%;")
+
+    content_col = ui.column().style("gap:16px; width:100%;")
 
     def refresh() -> None:
-        devices_col.clear()
+        content_col.clear()
         devices = db.get_devices(project_id)
-        with devices_col:
+        with content_col:
             if not devices:
                 _empty_state("No devices added yet", "dns")
-            for dev in devices:
-                _device_card(dev, project_id, refresh)
+                return
+
+            # Download CSV button
+            def download_devices_csv() -> None:
+                rows = db.get_devices(project_id)
+                output = io.StringIO()
+                writer = csv.writer(output)
+                writer.writerow(
+                    ["Hostname", "Vendor", "Model", "Role", "Mgmt IP", "Site", "Notes"]
+                )
+                for d in rows:
+                    writer.writerow(
+                        [
+                            d["hostname"],
+                            d["vendor"] or "",
+                            d["model"] or "",
+                            d["role"] or "",
+                            d["mgmt_ip"] or "",
+                            d["site"] or "",
+                            d["notes"] or "",
+                        ]
+                    )
+                ui.download(output.getvalue().encode("utf-8"), "devices.csv")
+
+            with ui.row().style("gap:10px; align-items:center; margin-bottom:8px;"):
+                ui.button(
+                    "Download CSV", icon="download", on_click=download_devices_csv
+                ).style(
+                    f"background:{ACCENT}15; color:{ACCENT}; border:1px solid {ACCENT}33;"
+                    f"font-size:12px; padding:6px 14px; border-radius:5px; cursor:pointer;"
+                )
+                ui.label(
+                    f"{len(devices)} device{'s' if len(devices) != 1 else ''}"
+                ).style(f"font-size:12px; color:{TEXT_MUTED};")
+
+            # Spreadsheet-style table
+            columns = [
+                {
+                    "name": "hostname",
+                    "label": "Hostname",
+                    "field": "hostname",
+                    "align": "left",
+                    "sortable": True,
+                },
+                {
+                    "name": "vendor",
+                    "label": "Vendor",
+                    "field": "vendor",
+                    "align": "left",
+                    "sortable": True,
+                },
+                {"name": "model", "label": "Model", "field": "model", "align": "left"},
+                {"name": "role", "label": "Role", "field": "role", "align": "left"},
+                {
+                    "name": "mgmt_ip",
+                    "label": "Mgmt IP",
+                    "field": "mgmt_ip",
+                    "align": "left",
+                },
+                {"name": "site", "label": "Site", "field": "site", "align": "left"},
+                {"name": "actions", "label": "", "field": "actions", "align": "center"},
+            ]
+            rows_data = []
+            for d in devices:
+                rows_data.append(
+                    {
+                        "id": d["id"],
+                        "hostname": d["hostname"] or "",
+                        "vendor": d["vendor"] or "",
+                        "model": d["model"] or "",
+                        "role": d["role"] or "",
+                        "mgmt_ip": d["mgmt_ip"] or "",
+                        "site": d["site"] or "",
+                    }
+                )
+
+            table = (
+                ui.table(
+                    columns=columns,
+                    rows=rows_data,
+                    row_key="id",
+                )
+                .style(
+                    f"width:100%; background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:8px;"
+                )
+                .props("flat bordered dense")
+            )
+
+            # Add delete button per row via slot
+            table.add_slot(
+                "body-cell-actions",
+                """
+                <q-td :props="props">
+                    <q-btn flat dense icon="delete_outline" size="sm" color="grey"
+                           @click="$parent.$emit('delete', props.row)" />
+                </q-td>
+            """,
+            )
+            table.on(
+                "delete",
+                lambda e: _confirm_delete(
+                    f"Delete {e.args['hostname']}?",
+                    lambda did=e.args["id"]: (db.delete_device(did), refresh()),
+                ),
+            )
 
     # Add device dialog
     with ui.dialog() as add_dlg, ui.card().style(
@@ -185,6 +291,11 @@ def _section_devices(project_id: int) -> None:
             .props("outlined")
             .style("width:100%; margin-top:10px;")
         )
+        role_in = (
+            ui.input("Role (e.g. PE, CPE, Core)")
+            .props("outlined")
+            .style("width:100%; margin-top:10px;")
+        )
         notes_in = (
             ui.textarea("Notes").props("outlined").style("width:100%; margin-top:10px;")
         )
@@ -201,7 +312,7 @@ def _section_devices(project_id: int) -> None:
                     hostname_in.value.strip(),
                     vendor=vendor_in.value,
                     model=model_in.value,
-                    role="",
+                    role=role_in.value.strip(),
                     mgmt_ip=mgmt_in.value,
                     site=site_in.value,
                     notes=notes_in.value,
@@ -218,6 +329,7 @@ def _section_devices(project_id: int) -> None:
         model_in.value = ""
         mgmt_in.value = ""
         site_in.value = ""
+        role_in.value = ""
         notes_in.value = ""
         add_dlg.open()
 
@@ -449,26 +561,133 @@ def _device_card(
 
 def _section_circuits(project_id: int) -> None:
     _page_header("cable", "Circuits")
-    ckt_col = ui.column().style("gap:10px; width:100%;")
+
+    content_col = ui.column().style("gap:16px; width:100%;")
 
     def refresh() -> None:
-        ckt_col.clear()
+        content_col.clear()
         circuits = db.get_circuits(project_id)
-        with ckt_col:
+        with content_col:
             if not circuits:
                 _empty_state("No circuits added yet", "cable")
                 return
-            # Table header
-            with ui.element("div").style(
-                f"display:grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr auto;"
-                f"gap:0; padding:8px 14px;"
-                f"font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:{TEXT_MUTED}; font-weight:600;"
-            ):
-                for h in ["Circuit ID", "Carrier", "Type", "Bandwidth", "Status", ""]:
-                    ui.label(h)
-            for c in circuits:
-                _circuit_row(c, refresh)
 
+            # Download CSV button
+            def download_circuits_csv() -> None:
+                rows = db.get_circuits(project_id)
+                output = io.StringIO()
+                writer = csv.writer(output)
+                writer.writerow(
+                    ["Circuit ID", "Carrier", "Type", "Bandwidth", "Status", "Notes"]
+                )
+                for c in rows:
+                    writer.writerow(
+                        [
+                            c["cid"],
+                            c["carrier"] or "",
+                            c["circuit_type"] or "",
+                            c["bandwidth"] or "",
+                            c["status"] or "",
+                            c["notes"] or "",
+                        ]
+                    )
+                ui.download(output.getvalue().encode("utf-8"), "circuits.csv")
+
+            with ui.row().style("gap:10px; align-items:center; margin-bottom:8px;"):
+                ui.button(
+                    "Download CSV", icon="download", on_click=download_circuits_csv
+                ).style(
+                    f"background:{ACCENT}15; color:{ACCENT}; border:1px solid {ACCENT}33;"
+                    f"font-size:12px; padding:6px 14px; border-radius:5px; cursor:pointer;"
+                )
+                ui.label(
+                    f"{len(circuits)} circuit{'s' if len(circuits) != 1 else ''}"
+                ).style(f"font-size:12px; color:{TEXT_MUTED};")
+
+            # Spreadsheet-style table
+            columns = [
+                {
+                    "name": "cid",
+                    "label": "Circuit ID",
+                    "field": "cid",
+                    "align": "left",
+                    "sortable": True,
+                },
+                {
+                    "name": "carrier",
+                    "label": "Carrier",
+                    "field": "carrier",
+                    "align": "left",
+                    "sortable": True,
+                },
+                {
+                    "name": "circuit_type",
+                    "label": "Type",
+                    "field": "circuit_type",
+                    "align": "left",
+                    "sortable": True,
+                },
+                {
+                    "name": "bandwidth",
+                    "label": "Bandwidth",
+                    "field": "bandwidth",
+                    "align": "left",
+                },
+                {
+                    "name": "status",
+                    "label": "Status",
+                    "field": "status",
+                    "align": "left",
+                    "sortable": True,
+                },
+                {"name": "notes", "label": "Notes", "field": "notes", "align": "left"},
+                {"name": "actions", "label": "", "field": "actions", "align": "center"},
+            ]
+            rows_data = []
+            for c in circuits:
+                rows_data.append(
+                    {
+                        "id": c["id"],
+                        "cid": c["cid"] or "",
+                        "carrier": c["carrier"] or "",
+                        "circuit_type": c["circuit_type"] or "",
+                        "bandwidth": c["bandwidth"] or "",
+                        "status": c["status"] or "",
+                        "notes": c["notes"] or "",
+                    }
+                )
+
+            table = (
+                ui.table(
+                    columns=columns,
+                    rows=rows_data,
+                    row_key="id",
+                )
+                .style(
+                    f"width:100%; background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:8px;"
+                )
+                .props("flat bordered dense")
+            )
+
+            # Add delete button per row via slot
+            table.add_slot(
+                "body-cell-actions",
+                """
+                <q-td :props="props">
+                    <q-btn flat dense icon="delete_outline" size="sm" color="grey"
+                           @click="$parent.$emit('delete', props.row)" />
+                </q-td>
+            """,
+            )
+            table.on(
+                "delete",
+                lambda e: _confirm_delete(
+                    f"Delete circuit {e.args['cid']}?",
+                    lambda cid=e.args["id"]: (db.delete_circuit(cid), refresh()),
+                ),
+            )
+
+    # Add circuit dialog
     with ui.dialog() as add_dlg, ui.card().style(
         f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:10px; padding:26px; min-width:480px;"
     ):
@@ -546,37 +765,6 @@ def _section_circuits(project_id: int) -> None:
 
     _add_button("Add Circuit", open_add_circuit)
     refresh()
-
-
-def _circuit_row(c: sqlite3.Row, refresh_cb: Callable[[], None]) -> None:
-    sc = STATUS_COLORS.get((c["status"] or "active").lower(), TEXT_MUTED)
-    with ui.element("div").style(
-        f"display:grid; grid-template-columns: 2fr 1.5fr 1fr 1fr 1fr auto;"
-        f"gap:0; padding:12px 14px; background:{PANEL_BG}; border:1px solid {BORDER};"
-        f"border-radius:6px; align-items:center;"
-    ):
-        ui.label(c["cid"]).style(
-            f"font-family:'JetBrains Mono',monospace; font-size:13px; color:{ACCENT}; font-weight:600;"
-        )
-        ui.label(c["carrier"] or "—").style(f"font-size:13px; color:{TEXT_SEC};")
-        ui.label(c["circuit_type"] or "—").style(f"font-size:12px; color:{TEXT_MUTED};")
-        ui.label(c["bandwidth"] or "—").style(
-            f"font-family:'JetBrains Mono',monospace; font-size:12px; color:{TEXT_SEC};"
-        )
-        with ui.row().style("align-items:center; gap:5px;"):
-            ui.element("span").style(
-                f"width:6px;height:6px;border-radius:50%;background:{sc};display:inline-block;"
-            )
-            ui.label(c["status"] or "active").style(f"font-size:12px; color:{sc};")
-        ui.icon("delete_outline").style(
-            f"font-size:16px; color:{TEXT_MUTED}; cursor:pointer;"
-        ).on(
-            "click",
-            lambda cid=c["id"]: _confirm_delete(
-                f"Delete circuit {c['cid']}?",
-                lambda: (db.delete_circuit(cid), refresh_cb()),
-            ),
-        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
