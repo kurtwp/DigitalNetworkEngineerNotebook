@@ -29,13 +29,13 @@ def projects_page() -> None:
     """Render the main projects listing page."""
     apply_global_styles()
 
-    with ui.element("div").classes("min-h-screen pl-24 pr-16 py-12").style(
+    with ui.element("div").classes("min-h-screen pl-40 pr-16 py-12").style(
         f"background:{DARK_BG};"
     ):
         # Top bar: branding + action button
         with ui.row().classes("items-center justify-between mb-6 max-w-[900px]"):
             ui.label("NET NOTEBOOK").classes(
-                "text-[11px] font-bold tracking-[0.18em]"
+                "text-[16px] font-bold tracking-[0.2em]"
             ).style(f"font-family:'JetBrains Mono',monospace; color:{ACCENT};")
 
             new_btn = ui.button("+ New Project").style(
