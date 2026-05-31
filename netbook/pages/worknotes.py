@@ -1181,7 +1181,7 @@ def _section_journal(project_id: int) -> None:
                         device_id=device_id,
                         circuit_id=circuit_id,
                     )
-                    inputs["title"].value = ""
+                    inputs["title"].value = None
                     inputs["entry"].value = ""
                     ui.notify("Note added — see sidebar", color="positive")
 
@@ -1205,7 +1205,7 @@ def _section_journal(project_id: int) -> None:
             with_input=True,
             new_value_mode="add",
             label="Title — type a subject or select a device/circuit (required)",
-            value="",
+            value=None,
         )
         .props('outlined dense input-debounce="0"')
         .classes("w-full mb-2")
