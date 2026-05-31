@@ -12,9 +12,7 @@ DB_PATH = Path(__file__).parent.parent / "worknotes.db"
 _PROJECT_FIELDS = frozenset(
     {"name", "ticket_num", "type_of_work", "status", "scheduled_date", "notes"}
 )
-_DEVICE_FIELDS = frozenset(
-    {"hostname", "vendor", "model", "role", "mgmt_ip", "site", "notes"}
-)
+_DEVICE_FIELDS = frozenset({"hostname", "vendor", "model", "mgmt_ip", "site", "notes"})
 _CIRCUIT_FIELDS = frozenset(
     {"cid", "carrier", "circuit_type", "bandwidth", "status", "notes"}
 )
@@ -62,7 +60,6 @@ def init_db() -> None:
                     hostname    TEXT NOT NULL,
                     vendor      TEXT CHECK(vendor IN ('Juniper','Cisco','Other')),
                     model       TEXT,
-                    role        TEXT,
                     mgmt_ip     TEXT,
                     site        TEXT,
                     notes       TEXT
@@ -240,7 +237,6 @@ def create_device(
     hostname: str,
     vendor: str = "Cisco",
     model: str = "",
-    role: str = "",
     mgmt_ip: str = "",
     site: str = "",
     notes: str = "",
@@ -249,8 +245,8 @@ def create_device(
     try:
         with get_conn() as conn:
             cur = conn.execute(
-                "INSERT INTO devices (project_id,hostname,vendor,model,role,mgmt_ip,site,notes) VALUES (?,?,?,?,?,?,?,?)",
-                (project_id, hostname, vendor, model, role, mgmt_ip, site, notes),
+                "INSERT INTO devices (project_id,hostname,vendor,model,mgmt_ip,site,notes) VALUES (?,?,?,?,?,?,?)",
+                (project_id, hostname, vendor, model, mgmt_ip, site, notes),
             )
             return cur.lastrowid
     except sqlite3.Error as exc:

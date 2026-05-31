@@ -167,7 +167,7 @@ def _section_devices(project_id: int) -> None:
                 output = io.StringIO()
                 writer = csv.writer(output)
                 writer.writerow(
-                    ["Hostname", "Vendor", "Model", "Role", "Mgmt IP", "Site", "Notes"]
+                    ["Hostname", "Vendor", "Model", "Mgmt IP", "Site", "Notes"]
                 )
                 for d in rows:
                     writer.writerow(
@@ -175,7 +175,6 @@ def _section_devices(project_id: int) -> None:
                             d["hostname"],
                             d["vendor"] or "",
                             d["model"] or "",
-                            d["role"] or "",
                             d["mgmt_ip"] or "",
                             d["site"] or "",
                             d["notes"] or "",
@@ -211,7 +210,6 @@ def _section_devices(project_id: int) -> None:
                     "sortable": True,
                 },
                 {"name": "model", "label": "Model", "field": "model", "align": "left"},
-                {"name": "role", "label": "Role", "field": "role", "align": "left"},
                 {
                     "name": "mgmt_ip",
                     "label": "Mgmt IP",
@@ -229,7 +227,6 @@ def _section_devices(project_id: int) -> None:
                         "hostname": d["hostname"] or "",
                         "vendor": d["vendor"] or "",
                         "model": d["model"] or "",
-                        "role": d["role"] or "",
                         "mgmt_ip": d["mgmt_ip"] or "",
                         "site": d["site"] or "",
                     }
@@ -291,11 +288,6 @@ def _section_devices(project_id: int) -> None:
             .props("outlined")
             .style("width:100%; margin-top:10px;")
         )
-        role_in = (
-            ui.input("Role (e.g. PE, CPE, Core)")
-            .props("outlined")
-            .style("width:100%; margin-top:10px;")
-        )
         notes_in = (
             ui.textarea("Notes").props("outlined").style("width:100%; margin-top:10px;")
         )
@@ -312,7 +304,6 @@ def _section_devices(project_id: int) -> None:
                     hostname_in.value.strip(),
                     vendor=vendor_in.value,
                     model=model_in.value,
-                    role=role_in.value.strip(),
                     mgmt_ip=mgmt_in.value,
                     site=site_in.value,
                     notes=notes_in.value,
@@ -329,7 +320,6 @@ def _section_devices(project_id: int) -> None:
         model_in.value = ""
         mgmt_in.value = ""
         site_in.value = ""
-        role_in.value = ""
         notes_in.value = ""
         add_dlg.open()
 
@@ -356,11 +346,6 @@ def _device_card(
                     ui.element("span").classes(badge_class).style("").set_content(
                         vendor
                     )
-                    if dev["role"]:
-                        ui.label(dev["role"]).style(
-                            f"font-size:11px; color:{TEXT_MUTED}; background:#f5f7fa;"
-                            f"padding:2px 8px; border-radius:4px;"
-                        )
                 with ui.row().style(f"gap:20px; margin-top:4px;"):
                     if dev["model"]:
                         _meta_chip("memory", dev["model"])
