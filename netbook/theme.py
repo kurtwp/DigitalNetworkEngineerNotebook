@@ -254,7 +254,7 @@ def sidebar_nav(
 
                 # Journal sub-items: shown when expanded
                 if key == "journal" and journal_entries and journal_expanded:
-                    with ui.element("div").classes("pl-10 pb-1"):
+                    with ui.element("div").classes("pl-12 pt-1 pb-2"):
                         for entry in journal_entries:
                             entry_title = (
                                 entry["title"]
@@ -262,21 +262,22 @@ def sidebar_nav(
                                 else None
                             )
                             display_text = entry_title or (
-                                entry["entry"][:25] + "..."
-                                if len(entry["entry"]) > 25
+                                entry["entry"][:22] + "..."
+                                if len(entry["entry"]) > 22
                                 else entry["entry"]
                             )
                             is_entry_active = active_section == f"journal:{entry['id']}"
                             sub_item = (
                                 ui.label(display_text)
                                 .classes(
-                                    "text-xs px-2 py-1 cursor-pointer rounded"
+                                    "text-[13px] px-3 py-1.5 cursor-pointer rounded-md"
                                     " whitespace-nowrap overflow-hidden"
-                                    " text-ellipsis max-w-[160px]"
+                                    " text-ellipsis max-w-[165px]"
+                                    " hover:bg-gray-100 transition-colors"
                                 )
                                 .style(
-                                    f"color:{ACCENT if is_entry_active else TEXT_MUTED};"
-                                    f"font-weight:{'600' if is_entry_active else '400'};"
+                                    f"color:{ACCENT if is_entry_active else TEXT_SEC};"
+                                    f"font-weight:{'600' if is_entry_active else '500'};"
                                     f"background:{'#e8f5e9' if is_entry_active else 'transparent'};"
                                 )
                             )
