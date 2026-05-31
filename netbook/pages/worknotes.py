@@ -1198,31 +1198,35 @@ def _section_journal(project_id: int) -> None:
                     f"padding:8px 20px; border:none;"
                 )
 
-    # ── Title field (plain input — reliable) + device/circuit quick-pick ─────
-    with ui.row().classes("w-full mb-2 items-end gap-2"):
+    # ── Title: type a custom title OR select a device/circuit ────────────────
+    with ui.row().classes("w-full mb-3 items-center gap-4"):
         inputs["title"] = (
-            ui.input(
-                label="Title (required) — or pick a device/circuit →",
-            )
-            .props("outlined dense")
-            .classes("flex-1")
+            ui.input(label="Type a title").props("outlined dense").classes("flex-1")
         )
-        # Quick-pick dropdown for devices/circuits
+        ui.label("or").classes("text-sm font-medium").style(f"color:{TEXT_MUTED};")
         if combo_options:
 
             def on_pick(e):
-                inputs["title"].value = e.value
+                if e.value:
+                    inputs["title"].value = e.value
 
-            pick_sel = (
+            inputs["picker"] = (
                 ui.select(
                     options=combo_options,
-                    label="Pick",
+                    label="Select device / circuit",
                     value=None,
                     on_change=on_pick,
                 )
                 .props("outlined dense")
-                .classes("w-[200px]")
+                .classes("flex-1")
             )
+
+            # Clear picker when user types in title manually
+            def on_title_change():
+                if inputs["title"].value and inputs.get("picker"):
+                    inputs["picker"].value = None
+
+            inputs["title"].on("update:model-value", on_title_change)
 
     # ── Notes input (full width, scales with window) ──────────────────────────
     inputs["entry"] = (
