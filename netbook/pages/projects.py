@@ -29,7 +29,7 @@ def projects_page() -> None:
     """Render the main projects listing page."""
     apply_global_styles()
 
-    with ui.element("div").classes("min-h-screen pl-40 pr-16 py-12").style(
+    with ui.element("div").classes("min-h-screen pl-52 pr-16 py-12").style(
         f"background:{DARK_BG};"
     ):
         # Top bar: branding + action button
