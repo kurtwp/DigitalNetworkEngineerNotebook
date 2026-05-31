@@ -1131,8 +1131,6 @@ def _render_hops(hops: list[sqlite3.Row], hop_col) -> None:
 
 
 def _section_journal(project_id: int) -> None:
-    _page_header("history_edu", "Journal")
-
     # Build device/circuit options for linking
     devices = db.get_devices(project_id)
     circuits = db.get_circuits(project_id)
@@ -1142,7 +1140,7 @@ def _section_journal(project_id: int) -> None:
     for c in circuits:
         link_options[f"🔌 {c['cid']}"] = (None, c["id"])
 
-    journal_col = ui.column().style("gap:8px; width:100%; max-width:800px;")
+    journal_col = ui.column().style("gap:8px; width:100%;")
 
     def refresh() -> None:
         journal_col.clear()
@@ -1160,19 +1158,34 @@ def _section_journal(project_id: int) -> None:
                     ),
                 )
 
-    # ── Input area (always visible at top) ────────────────────────────────────
-    with ui.element("div").style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:8px;"
-        f"padding:16px 18px; max-width:800px; margin-bottom:16px;"
+    # ── Export function ───────────────────────────────────────────────────────
+    def export_journal() -> None:
+        entries = db.get_journal(project_id)
+        lines: list[str] = []
+        for e in entries:
+            ts = e["created_at"][:16].replace("T", " ") if e["created_at"] else "—"
+            link = ""
+            if e["hostname"]:
+                link = f"  [device: {e['hostname']}]"
+            elif e["cid"]:
+                link = f"  [circuit: {e['cid']}]"
+            lines.append(f"[{ts}]{link}\n{e['entry']}\n")
+        content = "\n".join(lines)
+        ui.download(content.encode("utf-8"), "journal.md")
+
+    # ── Header row: title left, controls right ────────────────────────────────
+    with ui.row().style(
+        "align-items:center; justify-content:space-between; width:100%; margin-bottom:16px;"
     ):
-        entry_in = (
-            ui.textarea("Type a note, command, or observation...")
-            .props("outlined autogrow")
-            .style(
-                "width:100%; font-family:'JetBrains Mono',monospace; font-size:13px;"
+        # Left: page title
+        with ui.row().style("align-items:center; gap:12px;"):
+            ui.icon("history_edu").style(f"font-size:22px; color:{ACCENT};")
+            ui.label("Journal").style(
+                f"font-size:22px; font-weight:600; color:{TEXT_PRI};"
             )
-        )
-        with ui.row().style("margin-top:10px; gap:10px; align-items:center;"):
+
+        # Right: link selector + Add + Export
+        with ui.row().style("align-items:center; gap:10px;"):
             link_sel = (
                 ui.select(
                     list(link_options.keys()),
@@ -1199,33 +1212,26 @@ def _section_journal(project_id: int) -> None:
                 refresh()
                 ui.notify("Note added", color="positive")
 
-            ui.button("+ Add", on_click=do_add).style(
+            ui.button("+ ADD", on_click=do_add).style(
                 f"background:{ACCENT}; color:#ffffff; font-weight:600;"
                 f"padding:8px 20px; border-radius:6px; border:none; cursor:pointer;"
-                f"margin-left:auto;"
+            )
+            ui.button("EXPORT NOTES", icon="download", on_click=export_journal).style(
+                f"background:{ACCENT}; color:#ffffff; font-weight:600;"
+                f"padding:8px 20px; border-radius:6px; border:none; cursor:pointer;"
             )
 
-    # ── Export button ─────────────────────────────────────────────────────────
-    def export_journal() -> None:
-        entries = db.get_journal(project_id)
-        lines: list[str] = []
-        for e in entries:
-            ts = e["created_at"][:16].replace("T", " ") if e["created_at"] else "—"
-            link = ""
-            if e["hostname"]:
-                link = f"  [device: {e['hostname']}]"
-            elif e["cid"]:
-                link = f"  [circuit: {e['cid']}]"
-            lines.append(f"[{ts}]{link}\n{e['entry']}\n")
-        content = "\n".join(lines)
-        ui.download(content.encode("utf-8"), "journal.md")
-
-    with ui.row().style("gap:10px; margin-bottom:12px; max-width:800px;"):
-        ui.button("Export Notes", icon="download", on_click=export_journal).style(
-            f"background:{ACCENT}15; color:{ACCENT}; border:1px solid {ACCENT}33;"
-            f"font-size:12px; padding:6px 14px; border-radius:5px; cursor:pointer;"
+    # ── Text input (full width, scales with window) ───────────────────────────
+    entry_in = (
+        ui.textarea("Type a note, command, or observation...")
+        .props("outlined autogrow")
+        .style(
+            f"width:100%; font-family:'JetBrains Mono',monospace; font-size:13px;"
+            f"margin-bottom:16px;"
         )
+    )
 
+    # ── Notes list (full width) ───────────────────────────────────────────────
     refresh()
 
 
