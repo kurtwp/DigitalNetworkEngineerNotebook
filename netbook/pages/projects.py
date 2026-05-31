@@ -29,29 +29,29 @@ def projects_page() -> None:
     """Render the main projects listing page."""
     apply_global_styles()
 
-    with ui.element("div").classes("min-h-screen px-12 py-10").style(
+    with ui.element("div").classes("min-h-screen px-16 py-14").style(
         f"background:{DARK_BG};"
     ):
         # Header
-        with ui.row().classes("items-center justify-between mb-8 max-w-[860px]"):
-            with ui.column().classes("gap-[2px]"):
+        with ui.row().classes("items-center justify-between mb-10 max-w-[900px]"):
+            with ui.column().classes("gap-1"):
                 ui.label("NET NOTEBOOK").classes(
                     "text-[11px] font-bold tracking-[0.18em]"
                 ).style(f"font-family:'JetBrains Mono',monospace; color:{ACCENT};")
                 ui.label("Projects").classes(
-                    "text-[26px] font-semibold leading-tight"
+                    "text-[28px] font-semibold leading-tight"
                 ).style(f"color:{TEXT_PRI};")
 
             new_btn = ui.button("+ New Project").style(
                 f"background:{ACCENT} !important; color:#ffffff !important; font-weight:600 !important;"
-                f"font-size:13px !important; padding:9px 22px !important;"
+                f"font-size:13px !important; padding:10px 24px !important;"
                 f"border-radius:6px !important; border:none !important;"
                 f"box-shadow: 0 2px 6px rgba(46,125,50,0.3) !important;"
                 f"text-transform: none !important;"
             )
 
         # Project cards
-        cards_col = ui.column().classes("gap-[10px] w-full max-w-[860px]")
+        cards_col = ui.column().classes("gap-3 w-full max-w-[900px]")
 
         def refresh_projects() -> None:
             cards_col.clear()
@@ -167,7 +167,7 @@ def _project_card(project: sqlite3.Row, refresh_cb: Callable[[], None]) -> None:
     date = project["scheduled_date"] or ""
 
     with ui.element("div").classes(
-        "rounded-lg px-[18px] py-[14px] flex items-center gap-[14px] w-full"
+        "rounded-lg px-6 py-4 flex items-center gap-5 w-full"
     ).style(
         f"background:{PANEL_BG}; border:1px solid {BORDER};"
         f"transition: box-shadow 0.15s, border-color 0.15s;"
@@ -175,29 +175,29 @@ def _project_card(project: sqlite3.Row, refresh_cb: Callable[[], None]) -> None:
     ):
         # Status dot
         ui.element("span").classes(
-            "w-[9px] h-[9px] rounded-full shrink-0 inline-block"
+            "w-[10px] h-[10px] rounded-full shrink-0 inline-block"
         ).style(f"background:{sc};")
 
         # Text block
-        with ui.column().classes("gap-[2px] flex-1 min-w-0 overflow-hidden"):
-            with ui.row().classes("items-baseline gap-[10px] flex-nowrap min-w-0"):
+        with ui.column().classes("gap-1 flex-1 min-w-0 overflow-hidden"):
+            with ui.row().classes("items-baseline gap-3 flex-nowrap min-w-0"):
                 if ticket:
                     ui.label(ticket).classes(
-                        "text-sm font-bold whitespace-nowrap shrink-0"
+                        "text-[15px] font-bold whitespace-nowrap shrink-0"
                     ).style(
                         f"font-family:'JetBrains Mono',monospace; color:{TEXT_PRI};"
                     )
                 if name and name != ticket:
                     ui.label(name).classes(
-                        "text-[13px] whitespace-nowrap overflow-hidden text-ellipsis"
+                        "text-[14px] whitespace-nowrap overflow-hidden text-ellipsis"
                     ).style(f"color:{TEXT_SEC};")
 
-            with ui.row().classes("items-center gap-[14px]"):
+            with ui.row().classes("items-center gap-4 mt-0.5"):
                 if tow:
-                    ui.label(tow).classes("text-xs").style(f"color:{TEXT_SEC};")
+                    ui.label(tow).classes("text-[13px]").style(f"color:{TEXT_SEC};")
                 if date:
-                    with ui.row().classes("items-center gap-[3px]"):
-                        ui.icon("event").classes("text-xs").style(
+                    with ui.row().classes("items-center gap-1"):
+                        ui.icon("event").classes("text-[13px]").style(
                             f"color:{TEXT_MUTED};"
                         )
                         ui.label(date).classes("text-xs").style(
@@ -206,7 +206,7 @@ def _project_card(project: sqlite3.Row, refresh_cb: Callable[[], None]) -> None:
                         )
 
         # Action buttons
-        with ui.row().classes("gap-2 items-center shrink-0"):
+        with ui.row().classes("gap-3 items-center shrink-0"):
             open_btn = ui.button("OPEN").style(
                 f"background:{ACCENT} !important; color:#ffffff !important;"
                 f"font-size:12px !important; font-weight:700 !important;"
