@@ -1143,24 +1143,6 @@ def _section_journal(project_id: int) -> None:
     for c in circuits:
         link_options[f"🔌 {c['cid']}"] = (None, c["id"])
 
-    journal_col = ui.column().style("gap:8px; width:100%;")
-
-    def refresh() -> None:
-        journal_col.clear()
-        entries = db.get_journal(project_id)
-        with journal_col:
-            if not entries:
-                _empty_state("No notes yet — add one above", "history_edu")
-                return
-            for e in entries:
-                _journal_entry_card(
-                    e,
-                    on_delete=lambda eid=e["id"]: (
-                        db.delete_journal_entry(eid),
-                        refresh(),
-                    ),
-                )
-
     # ── Export function ───────────────────────────────────────────────────────
     def export_journal() -> None:
         entries = db.get_journal(project_id)
@@ -1221,8 +1203,7 @@ def _section_journal(project_id: int) -> None:
                     title_in.value = ""
                     entry_in.value = ""
                     link_sel.value = "(none)"
-                    refresh()
-                    ui.notify("Note added", color="positive")
+                    ui.notify("Note added — see sidebar", color="positive")
 
                 ui.button("+ ADD", on_click=do_add).style(
                     f"background:{ACCENT}; color:#ffffff; font-weight:600;"
@@ -1246,12 +1227,14 @@ def _section_journal(project_id: int) -> None:
         .props("outlined autogrow")
         .style(
             "width:100%; font-family:'JetBrains Mono',monospace; font-size:13px;"
-            "min-height:120px; margin-bottom:16px;"
+            "min-height:200px;"
         )
     )
 
-    # ── Notes list (full width, fills remaining space) ────────────────────────
-    refresh()
+    # Hint text
+    ui.label("Notes appear in the sidebar under Journal. Click one to view it.").style(
+        f"font-size:12px; color:{TEXT_MUTED}; margin-top:16px;"
+    )
 
 
 def _journal_entry_card(

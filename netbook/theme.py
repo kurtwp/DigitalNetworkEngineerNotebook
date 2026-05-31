@@ -221,7 +221,9 @@ def sidebar_nav(
         # Nav items
         with ui.element("div").style("padding:4px 8px;"):
             for key, (icon, label) in SECTION_ICONS.items():
-                is_active = key == active_section
+                is_active = (key == active_section) or (
+                    key == "journal" and active_section.startswith("journal")
+                )
                 item = ui.element("div").classes(
                     f"nav-item {'active' if is_active else ''}"
                 )
@@ -245,24 +247,29 @@ def sidebar_nav(
                                     if "title" in entry.keys() and entry["title"]
                                     else None
                                 )
-                                if entry_title:
-                                    is_entry_active = (
-                                        active_section == f"journal:{entry['id']}"
-                                    )
-                                    sub_item = ui.label(entry_title).style(
-                                        f"font-size:12px; padding:4px 8px; cursor:pointer;"
-                                        f"border-radius:4px; white-space:nowrap; overflow:hidden;"
-                                        f"text-overflow:ellipsis; max-width:170px;"
-                                        f"color:{ACCENT if is_entry_active else TEXT_MUTED};"
-                                        f"font-weight:{'600' if is_entry_active else '400'};"
-                                        f"background:{'#e8f5e9' if is_entry_active else 'transparent'};"
-                                    )
-                                    sub_item.on(
-                                        "click",
-                                        lambda eid=entry["id"]: on_navigate(
-                                            f"journal:{eid}"
-                                        ),
-                                    )
+                                # Use title if available, otherwise show truncated entry text
+                                display_text = entry_title or (
+                                    entry["entry"][:25] + "..."
+                                    if len(entry["entry"]) > 25
+                                    else entry["entry"]
+                                )
+                                is_entry_active = (
+                                    active_section == f"journal:{entry['id']}"
+                                )
+                                sub_item = ui.label(display_text).style(
+                                    f"font-size:12px; padding:4px 8px; cursor:pointer;"
+                                    f"border-radius:4px; white-space:nowrap; overflow:hidden;"
+                                    f"text-overflow:ellipsis; max-width:170px;"
+                                    f"color:{ACCENT if is_entry_active else TEXT_MUTED};"
+                                    f"font-weight:{'600' if is_entry_active else '400'};"
+                                    f"background:{'#e8f5e9' if is_entry_active else 'transparent'};"
+                                )
+                                sub_item.on(
+                                    "click",
+                                    lambda eid=entry["id"]: on_navigate(
+                                        f"journal:{eid}"
+                                    ),
+                                )
 
         # Back to projects
         with ui.element("div").style(
