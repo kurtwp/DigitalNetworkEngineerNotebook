@@ -1169,7 +1169,8 @@ def _section_journal(project_id: int) -> None:
                 link = f"  [device: {e['hostname']}]"
             elif e["cid"]:
                 link = f"  [circuit: {e['cid']}]"
-            lines.append(f"[{ts}]{link}\n{e['entry']}\n")
+            title_str = f"  **{e['title']}**\n" if e.get("title") else ""
+            lines.append(f"[{ts}]{link}\n{title_str}{e['entry']}\n")
         content = "\n".join(lines)
         ui.download(content.encode("utf-8"), "journal.md")
 
@@ -1204,9 +1205,11 @@ def _section_journal(project_id: int) -> None:
                 db.add_journal_entry(
                     project_id,
                     entry_in.value.strip(),
+                    title=title_in.value.strip(),
                     device_id=device_id,
                     circuit_id=circuit_id,
                 )
+                title_in.value = ""
                 entry_in.value = ""
                 link_sel.value = "(none)"
                 refresh()
@@ -1222,6 +1225,11 @@ def _section_journal(project_id: int) -> None:
             )
 
     # ── Text input (full width, scales with window) ───────────────────────────
+    title_in = (
+        ui.input("Title (optional)")
+        .props("outlined dense")
+        .style("width:100%; margin-bottom:8px;")
+    )
     entry_in = (
         ui.textarea("Type a note, command, or observation...")
         .props("outlined autogrow")
@@ -1243,6 +1251,7 @@ def _journal_entry_card(
     ts = entry["created_at"][:16].replace("T", " ") if entry["created_at"] else "—"
     linked_device = entry["hostname"] if "hostname" in entry.keys() else None
     linked_circuit = entry["cid"] if "cid" in entry.keys() else None
+    title = entry["title"] if "title" in entry.keys() else None
     text = entry["entry"] or ""
 
     # Detect if entry looks like a command (single line, starts with common CLI patterns)
@@ -1301,6 +1310,12 @@ def _journal_entry_card(
                     ui.button("", icon="delete_outline", on_click=on_delete).props(
                         "flat dense size=sm"
                     ).style(f"color:{TEXT_MUTED};")
+
+        # Title (if present)
+        if title:
+            ui.label(title).style(
+                f"font-size:14px; font-weight:600; color:{TEXT_PRI}; margin-bottom:4px;"
+            )
 
         # Entry text
         font = (

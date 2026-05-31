@@ -122,6 +122,7 @@ def init_db() -> None:
                 CREATE TABLE IF NOT EXISTS journal_entries (
                     id          INTEGER PRIMARY KEY AUTOINCREMENT,
                     project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    title       TEXT,
                     entry       TEXT NOT NULL,
                     device_id   INTEGER REFERENCES devices(id) ON DELETE SET NULL,
                     circuit_id  INTEGER REFERENCES circuits(id) ON DELETE SET NULL,
@@ -130,7 +131,7 @@ def init_db() -> None:
             """
             )
         log.info("Database initialized at %s", DB_PATH)
-        # Migrate journal_entries: add device_id/circuit_id if missing, drop tag
+        # Migrate journal_entries: add device_id/circuit_id/title if missing
         try:
             cols = [
                 row[1]
@@ -144,6 +145,8 @@ def init_db() -> None:
                 conn.execute(
                     "ALTER TABLE journal_entries ADD COLUMN circuit_id INTEGER REFERENCES circuits(id) ON DELETE SET NULL"
                 )
+            if "title" not in cols:
+                conn.execute("ALTER TABLE journal_entries ADD COLUMN title TEXT")
         except sqlite3.Error:
             pass  # table may not exist yet on first run
     except sqlite3.Error as exc:
@@ -630,6 +633,7 @@ def get_journal(project_id: int) -> list[sqlite3.Row]:
 def add_journal_entry(
     project_id: int,
     entry: str,
+    title: str = "",
     device_id: int | None = None,
     circuit_id: int | None = None,
 ) -> int | None:
@@ -637,8 +641,8 @@ def add_journal_entry(
     try:
         with get_conn() as conn:
             cur = conn.execute(
-                "INSERT INTO journal_entries (project_id, entry, device_id, circuit_id) VALUES (?,?,?,?)",
-                (project_id, entry, device_id, circuit_id),
+                "INSERT INTO journal_entries (project_id, title, entry, device_id, circuit_id) VALUES (?,?,?,?,?)",
+                (project_id, title or None, entry, device_id, circuit_id),
             )
             return cur.lastrowid
     except sqlite3.Error as exc:
