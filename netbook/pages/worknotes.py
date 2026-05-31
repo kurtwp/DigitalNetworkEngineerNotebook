@@ -1232,8 +1232,8 @@ def _section_journal(project_id: int) -> None:
     inputs["entry"] = (
         ui.textarea("Type a note, command, or observation...")
         .props("outlined autogrow")
-        .classes("w-full font-mono text-[13px]")
-        .style("min-height:calc(100vh - 250px);")
+        .classes("font-mono text-[13px]")
+        .style("width:100%; min-height:calc(100vh - 280px);")
     )
 
 
