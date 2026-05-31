@@ -1220,10 +1220,10 @@ def _section_journal(project_id: int) -> None:
         ui.select(
             combo_options,
             with_input=True,
-            new_value_mode="add-unique",
+            new_value_mode="add",
             label="Title — select a device/circuit or type a subject (required)",
         )
-        .props("outlined dense")
+        .props('outlined dense input-debounce="0"')
         .style("width:100%; margin-bottom:8px;")
     )
 
