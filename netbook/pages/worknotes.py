@@ -1193,13 +1193,16 @@ def _section_journal(project_id: int) -> None:
                 )
 
     # ── Combined title/link field (select a device/circuit or type a custom title)
-    # Title input with autocomplete suggestions for devices/circuits
+    # Use ui.select with with_input for dropdown + free text
     title_combo = (
-        ui.input(
-            label="Title — type a subject or device/circuit name (required)",
-            autocomplete=combo_options,
+        ui.select(
+            options=combo_options,
+            with_input=True,
+            new_value_mode="add",
+            label="Title — type a subject or select a device/circuit (required)",
+            value="",
         )
-        .props("outlined dense")
+        .props('outlined dense use-input input-debounce="0" behavior="dialog"')
         .classes("w-full mb-2")
     )
 
