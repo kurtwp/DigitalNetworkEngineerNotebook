@@ -171,16 +171,8 @@ User clicks WORK NOTES
   │     YES → open /worknotes/{ticket_number} in new tab
   │     NO  → prompt: "Set a ticket directory first"
   │             └── after directory set → open notebook
-  └── Notebook data stored as worknotes.db inside linked directory
+  └── Notebook data stored as worknotes.db 
 ```
-
-### Linked Directory Structure
-
-```
-/home/kpas/Documents/Networking/SEEIMP-110171/
-  ├── worknotes.db        ← notebook SQLite database (independent)
-  ├── configs/            ← config snippet files (optional export)
-  └── attachments/        ← existing attachment behavior (unchanged)
 ```
 
 The `worknotes.db` file is fully self-contained. It can exist with or without a Jira ticket — the notebook can also be used for standalone projects that have no associated ticket.
