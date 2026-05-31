@@ -1231,9 +1231,9 @@ def _section_journal(project_id: int) -> None:
     # ── Notes input (full width, scales with window) ──────────────────────────
     inputs["entry"] = (
         ui.textarea("Type a note, command, or observation...")
-        .props("outlined autogrow")
+        .props("outlined")
         .classes("font-mono text-[13px]")
-        .style("width:100%; min-height:calc(100vh - 280px);")
+        .style("width:100%; height:calc(100vh - 280px); overflow:auto; resize:both;")
     )
 
 

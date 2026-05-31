@@ -132,6 +132,7 @@ def apply_global_styles() -> None:
       /* Ensure textarea fields stretch full width */
       .q-textarea {{ width: 100% !important; }}
       .q-textarea .q-field__control {{ width: 100% !important; }}
+      .q-textarea .q-field__native {{ overflow: auto !important; resize: both !important; }}
 
       /* Card */
       .nb-card {{ background: {PANEL_BG}; border: 1px solid {BORDER}; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }}
