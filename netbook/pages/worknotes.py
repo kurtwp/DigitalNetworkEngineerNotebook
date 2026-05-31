@@ -1233,14 +1233,9 @@ def _section_journal(project_id: int) -> None:
         .props("outlined autogrow")
         .style(
             "width:100%; font-family:'JetBrains Mono',monospace; font-size:13px;"
-            "min-height:200px;"
+            "min-height:calc(100vh - 250px);"
         )
     )
-
-    # Hint text
-    ui.label(
-        "Select a device/circuit or type a custom title. Notes appear in the sidebar."
-    ).style(f"font-size:12px; color:{TEXT_MUTED}; margin-top:16px;")
 
 
 def _journal_entry_card(
