@@ -657,3 +657,15 @@ def delete_journal_entry(entry_id: int) -> None:
             conn.execute("DELETE FROM journal_entries WHERE id=?", (entry_id,))
     except sqlite3.Error as exc:
         log.error("Failed to delete journal entry %s: %s", entry_id, exc)
+
+
+def update_journal_entry(entry_id: int, title: str, entry: str) -> None:
+    """Update a journal entry's title and text."""
+    try:
+        with get_conn() as conn:
+            conn.execute(
+                "UPDATE journal_entries SET title=?, entry=? WHERE id=?",
+                (title or None, entry, entry_id),
+            )
+    except sqlite3.Error as exc:
+        log.error("Failed to update journal entry %s: %s", entry_id, exc)

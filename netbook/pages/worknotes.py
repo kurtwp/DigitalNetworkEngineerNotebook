@@ -1341,7 +1341,7 @@ def _journal_entry_card(
 def _section_journal_entry(
     project_id: int, entry_id: int, navigate: Callable[[str], None]
 ) -> None:
-    """Show a single journal entry detail view."""
+    """Show a single journal entry detail view with edit and delete."""
     entries = db.get_journal(project_id)
     entry = None
     for e in entries:
@@ -1353,33 +1353,56 @@ def _section_journal_entry(
         ui.label("Entry not found").style(f"color:{TEXT_PRI}; padding:40px;")
         return
 
-    # Back link
-    with ui.row().style(
-        "align-items:center; gap:8px; margin-bottom:20px; cursor:pointer;"
-    ):
-        back = ui.element("div").style(
-            f"display:flex; align-items:center; gap:6px; color:{TEXT_MUTED};"
-            f"font-size:13px; cursor:pointer;"
-        )
-        with back:
-            ui.icon("arrow_back").style("font-size:16px;")
-            ui.label("Back to Journal").style("font-size:13px;")
-        back.on("click", lambda: navigate("journal"))
-
     ts = entry["created_at"][:16].replace("T", " ") if entry["created_at"] else "—"
     title = entry["title"] if "title" in entry.keys() and entry["title"] else None
     linked_device = entry["hostname"] if "hostname" in entry.keys() else None
     linked_circuit = entry["cid"] if "cid" in entry.keys() else None
     text = entry["entry"] or ""
 
-    # Header
-    with ui.row().style("align-items:center; gap:12px; margin-bottom:16px;"):
-        ui.icon("history_edu").style(f"font-size:22px; color:{ACCENT};")
-        if title:
-            ui.label(title).style(f"font-size:22px; font-weight:600; color:{TEXT_PRI};")
-        else:
-            ui.label("Journal Entry").style(
+    # Back link
+    back = ui.element("div").style(
+        f"display:flex; align-items:center; gap:6px; color:{TEXT_MUTED};"
+        f"font-size:13px; cursor:pointer; margin-bottom:20px;"
+    )
+    with back:
+        ui.icon("arrow_back").style("font-size:16px;")
+        ui.label("Back to Journal").style("font-size:13px;")
+    back.on("click", lambda: navigate("journal"))
+
+    # Header row with title + action buttons
+    with ui.row().style(
+        "align-items:center; justify-content:space-between; width:100%; margin-bottom:16px;"
+    ):
+        with ui.row().style("align-items:center; gap:12px;"):
+            ui.icon("history_edu").style(f"font-size:22px; color:{ACCENT};")
+            ui.label(title or "Journal Entry").style(
                 f"font-size:22px; font-weight:600; color:{TEXT_PRI};"
+            )
+
+        # Action buttons
+        with ui.row().style("align-items:center; gap:8px;"):
+
+            def do_delete() -> None:
+                db.delete_journal_entry(entry_id)
+                ui.notify("Entry deleted", color="negative")
+                navigate("journal")
+
+            def open_edit() -> None:
+                edit_dlg.open()
+
+            ui.button("EDIT", icon="edit", on_click=open_edit).style(
+                f"background:{ACCENT}; color:#ffffff; font-weight:600;"
+                f"padding:8px 18px; border-radius:6px; border:none; cursor:pointer;"
+            )
+            ui.button(
+                "DELETE",
+                icon="delete",
+                on_click=lambda: _confirm_delete(
+                    f"Delete this journal entry?", do_delete
+                ),
+            ).style(
+                "background:#c62828; color:#ffffff; font-weight:600;"
+                "padding:8px 18px; border-radius:6px; border:none; cursor:pointer;"
             )
 
     # Metadata row
@@ -1420,6 +1443,47 @@ def _section_journal_entry(
             f"background:{ACCENT}15; color:{ACCENT}; border:1px solid {ACCENT}33;"
             f"font-size:12px; padding:6px 14px; border-radius:5px; cursor:pointer;"
         )
+
+    # ── Edit dialog ───────────────────────────────────────────────────────────
+    with ui.dialog() as edit_dlg, ui.card().style(
+        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:10px;"
+        f"padding:26px; min-width:600px;"
+    ):
+        ui.label("Edit Journal Entry").style(
+            f"font-size:17px; font-weight:600; color:{TEXT_PRI}; margin-bottom:18px;"
+        )
+        edit_title = (
+            ui.input("Title", value=title or "").props("outlined").style("width:100%;")
+        )
+        edit_text = (
+            ui.textarea("Entry", value=text)
+            .props("outlined autogrow")
+            .style(
+                "width:100%; margin-top:10px; font-family:'JetBrains Mono',monospace;"
+                "font-size:13px; min-height:150px;"
+            )
+        )
+        with ui.row().style("margin-top:20px; gap:10px; justify-content:flex-end;"):
+            ui.button("Cancel", on_click=edit_dlg.close).style(_cancel_style())
+
+            def do_save() -> None:
+                if not edit_title.value.strip():
+                    ui.notify("Title is required", color="negative")
+                    return
+                if not edit_text.value.strip():
+                    ui.notify("Entry cannot be empty", color="negative")
+                    return
+                db.update_journal_entry(
+                    entry_id, edit_title.value.strip(), edit_text.value.strip()
+                )
+                edit_dlg.close()
+                ui.notify("Entry updated", color="positive")
+                navigate(f"journal:{entry_id}")
+
+            ui.button("Save", on_click=do_save).style(
+                f"background:{ACCENT}; color:#ffffff; font-weight:600;"
+                f"padding:8px 22px; border-radius:6px; border:none; cursor:pointer;"
+            )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
