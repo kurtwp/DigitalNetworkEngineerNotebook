@@ -6,7 +6,7 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
-DB_PATH = Path(__file__).parent / "worknotes.db"
+DB_PATH = Path(__file__).parent.parent / "worknotes.db"
 
 # ── Allowed fields for dynamic UPDATE queries (whitelist for safety) ─────────
 _PROJECT_FIELDS = frozenset(
