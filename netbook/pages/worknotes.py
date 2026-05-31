@@ -1174,57 +1174,65 @@ def _section_journal(project_id: int) -> None:
         content = "\n".join(lines)
         ui.download(content.encode("utf-8"), "journal.md")
 
-    # ── Header row: title left, controls right ────────────────────────────────
-    with ui.row().style(
-        "align-items:center; justify-content:space-between; width:100%; margin-bottom:16px;"
+    # ── Sticky header row: title left, controls right ─────────────────────────
+    with ui.element("div").style(
+        f"position:sticky; top:0; z-index:10; background:{DARK_BG};"
+        f"padding-bottom:12px; width:100%;"
     ):
-        # Left: page title
-        with ui.row().style("align-items:center; gap:12px;"):
-            ui.icon("history_edu").style(f"font-size:22px; color:{ACCENT};")
-            ui.label("Journal").style(
-                f"font-size:22px; font-weight:600; color:{TEXT_PRI};"
-            )
-
-        # Right: link selector + Add + Export
-        with ui.row().style("align-items:center; gap:10px;"):
-            link_sel = (
-                ui.select(
-                    list(link_options.keys()),
-                    value="(none)",
-                    label="Link to device/circuit (optional)",
+        with ui.row().style(
+            "align-items:center; justify-content:space-between; width:100%;"
+        ):
+            # Left: page title
+            with ui.row().style("align-items:center; gap:12px;"):
+                ui.icon("history_edu").style(f"font-size:22px; color:{ACCENT};")
+                ui.label("Journal").style(
+                    f"font-size:22px; font-weight:600; color:{TEXT_PRI};"
                 )
-                .props("outlined dense")
-                .style("min-width:250px;")
-            )
 
-            def do_add() -> None:
-                if not entry_in.value.strip():
-                    ui.notify("Note cannot be empty", color="negative")
-                    return
-                device_id, circuit_id = link_options.get(link_sel.value, (None, None))
-                db.add_journal_entry(
-                    project_id,
-                    entry_in.value.strip(),
-                    title=title_in.value.strip(),
-                    device_id=device_id,
-                    circuit_id=circuit_id,
+            # Right: link selector + Add + Export
+            with ui.row().style("align-items:center; gap:10px;"):
+                link_sel = (
+                    ui.select(
+                        list(link_options.keys()),
+                        value="(none)",
+                        label="Link to device/circuit (optional)",
+                    )
+                    .props("outlined dense")
+                    .style("min-width:250px;")
                 )
-                title_in.value = ""
-                entry_in.value = ""
-                link_sel.value = "(none)"
-                refresh()
-                ui.notify("Note added", color="positive")
 
-            ui.button("+ ADD", on_click=do_add).style(
-                f"background:{ACCENT}; color:#ffffff; font-weight:600;"
-                f"padding:8px 20px; border-radius:6px; border:none; cursor:pointer;"
-            )
-            ui.button("EXPORT NOTES", icon="download", on_click=export_journal).style(
-                f"background:{ACCENT}; color:#ffffff; font-weight:600;"
-                f"padding:8px 20px; border-radius:6px; border:none; cursor:pointer;"
-            )
+                def do_add() -> None:
+                    if not entry_in.value.strip():
+                        ui.notify("Note cannot be empty", color="negative")
+                        return
+                    device_id, circuit_id = link_options.get(
+                        link_sel.value, (None, None)
+                    )
+                    db.add_journal_entry(
+                        project_id,
+                        entry_in.value.strip(),
+                        title=title_in.value.strip(),
+                        device_id=device_id,
+                        circuit_id=circuit_id,
+                    )
+                    title_in.value = ""
+                    entry_in.value = ""
+                    link_sel.value = "(none)"
+                    refresh()
+                    ui.notify("Note added", color="positive")
 
-    # ── Text input (full width, scales with window) ───────────────────────────
+                ui.button("+ ADD", on_click=do_add).style(
+                    f"background:{ACCENT}; color:#ffffff; font-weight:600;"
+                    f"padding:8px 20px; border-radius:6px; border:none; cursor:pointer;"
+                )
+                ui.button(
+                    "EXPORT NOTES", icon="download", on_click=export_journal
+                ).style(
+                    f"background:{ACCENT}; color:#ffffff; font-weight:600;"
+                    f"padding:8px 20px; border-radius:6px; border:none; cursor:pointer;"
+                )
+
+    # ── Title + Notes input (full width, scales with window) ──────────────────
     title_in = (
         ui.input("Title (optional)")
         .props("outlined dense")
@@ -1234,12 +1242,12 @@ def _section_journal(project_id: int) -> None:
         ui.textarea("Type a note, command, or observation...")
         .props("outlined autogrow")
         .style(
-            f"width:100%; font-family:'JetBrains Mono',monospace; font-size:13px;"
-            f"margin-bottom:16px;"
+            "width:100%; font-family:'JetBrains Mono',monospace; font-size:13px;"
+            "min-height:120px; margin-bottom:16px;"
         )
     )
 
-    # ── Notes list (full width) ───────────────────────────────────────────────
+    # ── Notes list (full width, fills remaining space) ────────────────────────
     refresh()
 
 
