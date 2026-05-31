@@ -1411,6 +1411,7 @@ def _section_journal_entry(
     # Entry content
     with ui.element("div").classes("rounded-lg p-5 w-full").style(
         f"background:{PANEL_BG}; border:1px solid {BORDER};"
+        f"max-height:calc(100vh - 300px); overflow:auto;"
     ):
         ui.label(text).classes(
             "font-mono text-[13px] whitespace-pre-wrap leading-[1.7]"
