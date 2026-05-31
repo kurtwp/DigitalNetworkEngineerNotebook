@@ -249,7 +249,7 @@ def sidebar_nav(
                                     is_entry_active = (
                                         active_section == f"journal:{entry['id']}"
                                     )
-                                    sub_item = ui.element("div").style(
+                                    sub_item = ui.label(entry_title).style(
                                         f"font-size:12px; padding:4px 8px; cursor:pointer;"
                                         f"border-radius:4px; white-space:nowrap; overflow:hidden;"
                                         f"text-overflow:ellipsis; max-width:170px;"
@@ -257,7 +257,6 @@ def sidebar_nav(
                                         f"font-weight:{'600' if is_entry_active else '400'};"
                                         f"background:{'#e8f5e9' if is_entry_active else 'transparent'};"
                                     )
-                                    sub_item.set_content(entry_title)
                                     sub_item.on(
                                         "click",
                                         lambda eid=entry["id"]: on_navigate(
