@@ -33,7 +33,7 @@ def projects_page() -> None:
         f"background:{DARK_BG};"
     ):
         # Header
-        with ui.row().classes("items-center justify-between mb-10 max-w-[900px]"):
+        with ui.row().classes("items-center justify-between mb-12 max-w-[900px]"):
             with ui.column().classes("gap-1"):
                 ui.label("NET NOTEBOOK").classes(
                     "text-[11px] font-bold tracking-[0.18em]"
