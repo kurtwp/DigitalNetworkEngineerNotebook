@@ -1181,7 +1181,7 @@ def _section_journal(project_id: int) -> None:
                         device_id=device_id,
                         circuit_id=circuit_id,
                     )
-                    inputs["title"].value = None
+                    inputs["title"].value = ""
                     inputs["entry"].value = ""
                     ui.notify("Note added — see sidebar", color="positive")
 
@@ -1198,18 +1198,31 @@ def _section_journal(project_id: int) -> None:
                     f"padding:8px 20px; border:none;"
                 )
 
-    # ── Title/link field ──────────────────────────────────────────────────────
-    inputs["title"] = (
-        ui.select(
-            options=combo_options,
-            with_input=True,
-            new_value_mode="add",
-            label="Title — type a subject or select a device/circuit (required)",
-            value=None,
+    # ── Title field (plain input — reliable) + device/circuit quick-pick ─────
+    with ui.row().classes("w-full mb-2 items-end gap-2"):
+        inputs["title"] = (
+            ui.input(
+                label="Title (required) — or pick a device/circuit →",
+            )
+            .props("outlined dense")
+            .classes("flex-1")
         )
-        .props('outlined dense input-debounce="0"')
-        .classes("w-full mb-2")
-    )
+        # Quick-pick dropdown for devices/circuits
+        if combo_options:
+
+            def on_pick(e):
+                inputs["title"].value = e.value
+
+            pick_sel = (
+                ui.select(
+                    options=combo_options,
+                    label="Pick",
+                    value=None,
+                    on_change=on_pick,
+                )
+                .props("outlined dense")
+                .classes("w-[200px]")
+            )
 
     # ── Notes input (full width, scales with window) ──────────────────────────
     inputs["entry"] = (
