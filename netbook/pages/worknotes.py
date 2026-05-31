@@ -1444,9 +1444,7 @@ def _section_journal_entry(
         edit_text = (
             ui.textarea("Entry", value=text)
             .props("outlined")
-            .classes(
-                "w-full mt-2.5 font-mono text-[13px] min-h-[250px] resize overflow-auto"
-            )
+            .classes("w-full mt-2.5 font-mono text-[13px] min-h-[250px]")
         )
         with ui.row().classes("mt-5 gap-2.5 justify-end"):
             ui.button("Cancel", on_click=edit_dlg.close).style(_cancel_style())
