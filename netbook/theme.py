@@ -242,16 +242,37 @@ def sidebar_nav(
                         f"color:{'inherit' if not is_active else ACCENT};"
                     )
                     ui.label(label).classes("text-[13.5px] flex-1")
-                    # Show chevron for Journal when it has entries
-                    if key == "journal" and journal_entries:
-                        ui.icon(
-                            "expand_more" if is_active else "chevron_right"
-                        ).classes("text-[14px]").style(f"color:{TEXT_MUTED};")
                 item.on("click", lambda k=key: on_navigate(k))
 
-                # Journal sub-items: only visible when Journal is active
-                if key == "journal" and is_active and journal_entries:
-                    with ui.element("div").classes("pl-7 pb-1"):
+                # Journal sub-items in a collapsible container
+                if key == "journal" and journal_entries:
+                    sub_container = ui.element("div").classes("pl-10 pb-1")
+                    # Start visible if active, hidden otherwise
+                    if not is_active:
+                        sub_container.set_visibility(False)
+
+                    # Add toggle chevron to the journal nav item
+                    chevron = (
+                        ui.icon("expand_more" if is_active else "chevron_right")
+                        .classes("text-[14px] cursor-pointer")
+                        .style(f"color:{TEXT_MUTED};")
+                    )
+
+                    def toggle_journal(sc=sub_container, ch=chevron):
+                        if sc.visible:
+                            sc.set_visibility(False)
+                            ch._props["name"] = "chevron_right"
+                            ch.update()
+                        else:
+                            sc.set_visibility(True)
+                            ch._props["name"] = "expand_more"
+                            ch.update()
+
+                    chevron.on("click", toggle_journal)
+                    # Move chevron into the nav-item (append to item)
+                    chevron.move(item)
+
+                    with sub_container:
                         for entry in journal_entries:
                             entry_title = (
                                 entry["title"]
@@ -269,7 +290,7 @@ def sidebar_nav(
                                 .classes(
                                     "text-xs px-2 py-1 cursor-pointer rounded"
                                     " whitespace-nowrap overflow-hidden"
-                                    " text-ellipsis max-w-[170px]"
+                                    " text-ellipsis max-w-[160px]"
                                 )
                                 .style(
                                     f"color:{ACCENT if is_entry_active else TEXT_MUTED};"
