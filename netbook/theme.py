@@ -168,61 +168,62 @@ def sidebar_nav(
 
     project = get_project(project_id)
 
-    with ui.column().style(
-        f"width:230px; min-width:230px; height:100vh; background:{SIDEBAR_BG};"
-        f"border-right:1px solid {BORDER}; padding:0; overflow-y:auto; flex-shrink:0;"
+    with ui.column().classes(
+        "w-[230px] min-w-[230px] h-screen overflow-y-auto shrink-0 p-0"
+    ).style(
+        f"background:{SIDEBAR_BG}; border-right:1px solid {BORDER};"
         f"box-shadow: 2px 0 8px rgba(0,0,0,0.04);"
     ):
         # App title bar
-        with ui.element("div").style(
-            f"padding:18px 16px 14px; border-bottom:1px solid {BORDER}; background:#f8f9fb;"
+        with ui.element("div").classes("px-4 pt-[18px] pb-[14px]").style(
+            f"border-bottom:1px solid {BORDER}; background:#f8f9fb;"
         ):
-            ui.label("NET NOTEBOOK").style(
-                f"font-family:'JetBrains Mono',monospace; font-size:11px;"
-                f"font-weight:700; letter-spacing:0.15em; color:{ACCENT};"
-            )
-            ui.label("Work Notes").style(
-                f"font-size:11px; color:{TEXT_MUTED}; margin-top:2px;"
+            ui.label("NET NOTEBOOK").classes(
+                "font-bold text-xs tracking-[0.15em]"
+            ).style(f"font-family:'JetBrains Mono',monospace; color:{ACCENT};")
+            ui.label("Work Notes").classes("text-xs mt-0.5").style(
+                f"color:{TEXT_MUTED};"
             )
 
         # Project context card
-        with ui.element("div").style(
-            f"padding:14px 16px; border-bottom:1px solid {BORDER};"
+        with ui.element("div").classes("px-4 py-3.5").style(
+            f"border-bottom:1px solid {BORDER};"
         ):
             if project:
                 ticket = project["ticket_num"] or "—"
-                ui.label(ticket).style(
-                    f"font-family:'JetBrains Mono',monospace; font-size:13px;"
-                    f"font-weight:700; color:{ACCENT};"
+                ui.label(ticket).classes("text-[13px] font-bold").style(
+                    f"font-family:'JetBrains Mono',monospace; color:{ACCENT};"
                 )
-                ui.label(project["name"]).style(
-                    f"font-size:12.5px; color:{TEXT_PRI}; margin-top:4px; line-height:1.4; font-weight:500;"
-                )
+                ui.label(project["name"]).classes(
+                    "text-[12.5px] mt-1 leading-snug font-medium"
+                ).style(f"color:{TEXT_PRI};")
                 if project["type_of_work"]:
-                    ui.label(project["type_of_work"]).style(
-                        f"font-size:11.5px; color:{TEXT_SEC}; margin-top:3px;"
-                    )
+                    ui.label(project["type_of_work"]).classes(
+                        "text-[11.5px] mt-[3px]"
+                    ).style(f"color:{TEXT_SEC};")
                 if project["scheduled_date"]:
-                    with ui.row().style("align-items:center; margin-top:6px; gap:4px;"):
-                        ui.icon("event").style(f"font-size:13px; color:{TEXT_MUTED};")
-                        ui.label(project["scheduled_date"]).style(
-                            f"font-size:11px; color:{TEXT_MUTED}; font-family:'JetBrains Mono',monospace;"
+                    with ui.row().classes("items-center mt-1.5 gap-1"):
+                        ui.icon("event").classes("text-[13px]").style(
+                            f"color:{TEXT_MUTED};"
+                        )
+                        ui.label(project["scheduled_date"]).classes("text-xs").style(
+                            f"color:{TEXT_MUTED}; font-family:'JetBrains Mono',monospace;"
                         )
                 status = project["status"] or "active"
                 sc = STATUS_COLORS.get(status.lower(), TEXT_MUTED)
-                with ui.row().style("align-items:center; margin-top:8px; gap:6px;"):
-                    ui.element("span").style(
-                        f"width:7px;height:7px;border-radius:50%;background:{sc};display:inline-block;"
-                    )
-                    ui.label(status.capitalize()).style(
-                        f"font-size:11px; color:{sc}; font-weight:500;"
+                with ui.row().classes("items-center mt-2 gap-1.5"):
+                    ui.element("span").classes(
+                        "w-[7px] h-[7px] rounded-full inline-block"
+                    ).style(f"background:{sc};")
+                    ui.label(status.capitalize()).classes("text-xs font-medium").style(
+                        f"color:{sc};"
                     )
 
         # Navigation section label
         ui.element("div").classes("section-header")
 
         # Nav items
-        with ui.element("div").style("padding:4px 8px;"):
+        with ui.element("div").classes("px-2 py-1"):
             for key, (icon, label) in SECTION_ICONS.items():
                 is_active = (key == active_section) or (
                     key == "journal" and active_section.startswith("journal")
@@ -231,10 +232,10 @@ def sidebar_nav(
                     f"nav-item {'active' if is_active else ''}"
                 )
                 with item:
-                    ui.icon(icon).style(
-                        f"font-size:17px; color:{'inherit' if not is_active else ACCENT};"
+                    ui.icon(icon).classes("text-[17px]").style(
+                        f"color:{'inherit' if not is_active else ACCENT};"
                     )
-                    ui.label(label).style("font-size:13.5px;")
+                    ui.label(label).classes("text-[13.5px]")
                 item.on("click", lambda k=key: on_navigate(k))
 
                 # Show journal entry titles as sub-items under Journal
@@ -243,7 +244,7 @@ def sidebar_nav(
 
                     journal_entries = get_journal(project_id)
                     if journal_entries:
-                        with ui.element("div").style("padding-left:28px;"):
+                        with ui.element("div").classes("pl-7"):
                             for entry in journal_entries:
                                 entry_title = (
                                     entry["title"]
@@ -259,13 +260,18 @@ def sidebar_nav(
                                 is_entry_active = (
                                     active_section == f"journal:{entry['id']}"
                                 )
-                                sub_item = ui.label(display_text).style(
-                                    f"font-size:12px; padding:4px 8px; cursor:pointer;"
-                                    f"border-radius:4px; white-space:nowrap; overflow:hidden;"
-                                    f"text-overflow:ellipsis; max-width:170px;"
-                                    f"color:{ACCENT if is_entry_active else TEXT_MUTED};"
-                                    f"font-weight:{'600' if is_entry_active else '400'};"
-                                    f"background:{'#e8f5e9' if is_entry_active else 'transparent'};"
+                                sub_item = (
+                                    ui.label(display_text)
+                                    .classes(
+                                        "text-xs px-2 py-1 cursor-pointer rounded"
+                                        " whitespace-nowrap overflow-hidden"
+                                        " text-ellipsis max-w-[170px]"
+                                    )
+                                    .style(
+                                        f"color:{ACCENT if is_entry_active else TEXT_MUTED};"
+                                        f"font-weight:{'600' if is_entry_active else '400'};"
+                                        f"background:{'#e8f5e9' if is_entry_active else 'transparent'};"
+                                    )
                                 )
                                 sub_item.on(
                                     "click",
@@ -275,11 +281,11 @@ def sidebar_nav(
                                 )
 
         # Back to projects
-        with ui.element("div").style(
-            f"padding:12px 8px; border-top:1px solid {BORDER}; margin-top:auto;"
+        with ui.element("div").classes("px-2 py-3 mt-auto").style(
+            f"border-top:1px solid {BORDER};"
         ):
             back = ui.element("div").classes("nav-item").style(f"color:{TEXT_MUTED};")
             with back:
-                ui.icon("arrow_back").style("font-size:16px;")
-                ui.label("All Projects").style("font-size:13px;")
+                ui.icon("arrow_back").classes("text-[16px]")
+                ui.label("All Projects").classes("text-[13px]")
             back.on("click", lambda: ui.navigate.to("/"))

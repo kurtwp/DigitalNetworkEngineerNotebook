@@ -495,3 +495,75 @@ my-tool --help       # script entry point works immediately
 - **`print()` for logging**: use the `logging` module for any script that runs unattended
 - **`shell=True` in subprocess**: pass a list of args instead; use `shell=True` only when piping is truly necessary
 - **Naive datetimes**: always attach a timezone; store UTC, display local
+
+---
+
+## Tailwind CSS with NiceGUI
+
+NiceGUI includes Tailwind CSS via CDN by default. Use Tailwind utility classes for layout and spacing; use `.style()` only for custom hex colors or Quasar-specific overrides.
+
+### How to apply Tailwind in NiceGUI
+
+```python
+from nicegui import ui
+
+# Use .classes() for Tailwind utilities
+ui.label("Hello").classes("text-lg font-bold text-green-700")
+
+# Use .style() only for custom hex colors or values Tailwind can't express
+ui.label("Custom").classes("text-sm font-medium").style("color:#2e7d32;")
+
+# Combine both — Tailwind for layout, .style() for palette colors
+with ui.row().classes("flex items-center gap-3 px-4 py-2"):
+    ui.icon("dns").classes("text-lg")
+    ui.label("Router-1").classes("font-mono text-sm font-semibold").style("color:#1a1a2e;")
+```
+
+### Preferred patterns
+
+| Inline style | Tailwind equivalent |
+|---|---|
+| `style("display:flex;")` | `.classes("flex")` |
+| `style("align-items:center;")` | `.classes("items-center")` |
+| `style("justify-content:space-between;")` | `.classes("justify-between")` |
+| `style("gap:12px;")` | `.classes("gap-3")` |
+| `style("padding:16px 20px;")` | `.classes("px-5 py-4")` |
+| `style("margin-top:8px;")` | `.classes("mt-2")` |
+| `style("font-size:12px;")` | `.classes("text-xs")` |
+| `style("font-size:14px;")` | `.classes("text-sm")` |
+| `style("font-weight:600;")` | `.classes("font-semibold")` |
+| `style("font-weight:700;")` | `.classes("font-bold")` |
+| `style("border-radius:8px;")` | `.classes("rounded-lg")` |
+| `style("border-radius:6px;")` | `.classes("rounded-md")` |
+| `style("width:100%;")` | `.classes("w-full")` |
+| `style("min-height:100vh;")` | `.classes("min-h-screen")` |
+| `style("overflow:hidden;")` | `.classes("overflow-hidden")` |
+| `style("overflow-y:auto;")` | `.classes("overflow-y-auto")` |
+| `style("cursor:pointer;")` | `.classes("cursor-pointer")` |
+| `style("white-space:nowrap;")` | `.classes("whitespace-nowrap")` |
+| `style("text-overflow:ellipsis;")` | `.classes("text-ellipsis")` |
+| `style("font-family:'JetBrains Mono',monospace;")` | `.classes("font-mono")` |
+
+### When to keep `.style()`
+
+- Custom hex colors from the palette (e.g., `color:{ACCENT}`, `background:{PANEL_BG}`)
+- Borders with custom colors (`border:1px solid {BORDER}`)
+- Box shadows with specific values
+- Quasar component overrides (`.q-field__control`, etc.)
+- Arbitrary values that don't map cleanly to Tailwind (use `[arbitrary]` syntax sparingly)
+
+### Arbitrary values (use when no utility exists)
+
+```python
+# Tailwind arbitrary value syntax
+ui.element("div").classes("w-[230px] min-w-[230px] h-screen")
+ui.label("mono").classes("text-[13px] tracking-[0.15em]")
+```
+
+### Rules
+
+- **Prefer `.classes()` over `.style()`** for anything Tailwind handles (layout, spacing, typography, sizing)
+- **Never mix** — don't put `padding` in both `.classes()` and `.style()` on the same element
+- **Keep `.style()` minimal** — only for custom colors and Quasar overrides
+- **Use the project's color constants** (ACCENT, TEXT_PRI, etc.) in `.style()` — don't hardcode hex in Tailwind's `text-[]` syntax
+- **Responsive design** — use Tailwind breakpoints (`sm:`, `md:`, `lg:`) when needed
