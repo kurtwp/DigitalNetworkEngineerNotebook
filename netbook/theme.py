@@ -254,7 +254,7 @@ def sidebar_nav(
 
                 # Journal sub-items: shown when expanded
                 if key == "journal" and journal_entries and journal_expanded:
-                    with ui.element("div").classes("pl-[52px] pt-1 pb-2"):
+                    with ui.element("div").classes("ml-[41px] pt-1 pb-2"):
                         for entry in journal_entries:
                             entry_title = (
                                 entry["title"]
