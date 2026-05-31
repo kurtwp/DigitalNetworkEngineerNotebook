@@ -232,6 +232,26 @@ def sidebar_nav(
                     ui.label(label).style("font-size:13.5px;")
                 item.on("click", lambda k=key: on_navigate(k))
 
+                # Show journal entry titles as sub-items under Journal
+                if key == "journal":
+                    from netbook.database import get_journal
+
+                    journal_entries = get_journal(project_id)
+                    if journal_entries:
+                        with ui.element("div").style("padding-left:28px;"):
+                            for entry in journal_entries:
+                                entry_title = (
+                                    entry["title"]
+                                    if "title" in entry.keys() and entry["title"]
+                                    else None
+                                )
+                                if entry_title:
+                                    ui.label(entry_title).style(
+                                        f"font-size:12px; color:{TEXT_MUTED}; padding:3px 8px;"
+                                        f"cursor:default; white-space:nowrap; overflow:hidden;"
+                                        f"text-overflow:ellipsis; max-width:170px;"
+                                    )
+
         # Back to projects
         with ui.element("div").style(
             f"padding:12px 8px; border-top:1px solid {BORDER}; margin-top:auto;"
