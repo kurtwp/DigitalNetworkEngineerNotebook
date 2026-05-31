@@ -228,6 +228,12 @@ def sidebar_nav(
                 is_active = (key == active_section) or (
                     key == "journal" and active_section.startswith("journal")
                 )
+
+                if key == "journal":
+                    from netbook.database import get_journal
+
+                    journal_entries = get_journal(project_id)
+
                 item = ui.element("div").classes(
                     f"nav-item {'active' if is_active else ''}"
                 )
@@ -235,50 +241,46 @@ def sidebar_nav(
                     ui.icon(icon).classes("text-[17px]").style(
                         f"color:{'inherit' if not is_active else ACCENT};"
                     )
-                    ui.label(label).classes("text-[13.5px]")
+                    ui.label(label).classes("text-[13.5px] flex-1")
+                    # Show chevron for Journal when it has entries
+                    if key == "journal" and journal_entries:
+                        ui.icon(
+                            "expand_more" if is_active else "chevron_right"
+                        ).classes("text-[14px]").style(f"color:{TEXT_MUTED};")
                 item.on("click", lambda k=key: on_navigate(k))
 
-                # Show journal entry titles as sub-items under Journal
-                if key == "journal":
-                    from netbook.database import get_journal
-
-                    journal_entries = get_journal(project_id)
-                    if journal_entries:
-                        with ui.element("div").classes("pl-7"):
-                            for entry in journal_entries:
-                                entry_title = (
-                                    entry["title"]
-                                    if "title" in entry.keys() and entry["title"]
-                                    else None
+                # Journal sub-items: only visible when Journal is active
+                if key == "journal" and is_active and journal_entries:
+                    with ui.element("div").classes("pl-7 pb-1"):
+                        for entry in journal_entries:
+                            entry_title = (
+                                entry["title"]
+                                if "title" in entry.keys() and entry["title"]
+                                else None
+                            )
+                            display_text = entry_title or (
+                                entry["entry"][:25] + "..."
+                                if len(entry["entry"]) > 25
+                                else entry["entry"]
+                            )
+                            is_entry_active = active_section == f"journal:{entry['id']}"
+                            sub_item = (
+                                ui.label(display_text)
+                                .classes(
+                                    "text-xs px-2 py-1 cursor-pointer rounded"
+                                    " whitespace-nowrap overflow-hidden"
+                                    " text-ellipsis max-w-[170px]"
                                 )
-                                # Use title if available, otherwise show truncated entry text
-                                display_text = entry_title or (
-                                    entry["entry"][:25] + "..."
-                                    if len(entry["entry"]) > 25
-                                    else entry["entry"]
+                                .style(
+                                    f"color:{ACCENT if is_entry_active else TEXT_MUTED};"
+                                    f"font-weight:{'600' if is_entry_active else '400'};"
+                                    f"background:{'#e8f5e9' if is_entry_active else 'transparent'};"
                                 )
-                                is_entry_active = (
-                                    active_section == f"journal:{entry['id']}"
-                                )
-                                sub_item = (
-                                    ui.label(display_text)
-                                    .classes(
-                                        "text-xs px-2 py-1 cursor-pointer rounded"
-                                        " whitespace-nowrap overflow-hidden"
-                                        " text-ellipsis max-w-[170px]"
-                                    )
-                                    .style(
-                                        f"color:{ACCENT if is_entry_active else TEXT_MUTED};"
-                                        f"font-weight:{'600' if is_entry_active else '400'};"
-                                        f"background:{'#e8f5e9' if is_entry_active else 'transparent'};"
-                                    )
-                                )
-                                sub_item.on(
-                                    "click",
-                                    lambda eid=entry["id"]: on_navigate(
-                                        f"journal:{eid}"
-                                    ),
-                                )
+                            )
+                            sub_item.on(
+                                "click",
+                                lambda eid=entry["id"]: on_navigate(f"journal:{eid}"),
+                            )
 
         # Back to projects
         with ui.element("div").classes("px-2 py-3 mt-auto").style(
