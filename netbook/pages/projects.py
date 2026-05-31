@@ -29,21 +29,18 @@ def projects_page() -> None:
     """Render the main projects listing page."""
     apply_global_styles()
 
-    with ui.element("div").style(
-        f"min-height:100vh; background:{DARK_BG}; padding:40px 48px;"
+    with ui.element("div").classes("min-h-screen px-12 py-10").style(
+        f"background:{DARK_BG};"
     ):
         # Header
-        with ui.row().style(
-            "align-items:center; justify-content:space-between; margin-bottom:32px; max-width:860px;"
-        ):
-            with ui.column().style("gap:2px;"):
-                ui.label("NET NOTEBOOK").style(
-                    f"font-family:'JetBrains Mono',monospace; font-size:11px;"
-                    f"letter-spacing:0.18em; color:{ACCENT}; font-weight:700;"
-                )
-                ui.label("Projects").style(
-                    f"font-size:26px; font-weight:600; color:{TEXT_PRI}; line-height:1.2;"
-                )
+        with ui.row().classes("items-center justify-between mb-8 max-w-[860px]"):
+            with ui.column().classes("gap-[2px]"):
+                ui.label("NET NOTEBOOK").classes(
+                    "text-[11px] font-bold tracking-[0.18em]"
+                ).style(f"font-family:'JetBrains Mono',monospace; color:{ACCENT};")
+                ui.label("Projects").classes(
+                    "text-[26px] font-semibold leading-tight"
+                ).style(f"color:{TEXT_PRI};")
 
             new_btn = ui.button("+ New Project").style(
                 f"background:{ACCENT} !important; color:#ffffff !important; font-weight:600 !important;"
@@ -54,26 +51,25 @@ def projects_page() -> None:
             )
 
         # Project cards
-        cards_col = ui.column().style("gap:10px; width:100%; max-width:860px;")
+        cards_col = ui.column().classes("gap-[10px] w-full max-w-[860px]")
 
         def refresh_projects() -> None:
             cards_col.clear()
             projects = get_all_projects()
             with cards_col:
                 if not projects:
-                    with ui.element("div").style(
-                        f"background:{PANEL_BG}; border:2px dashed {BORDER};"
-                        f"border-radius:10px; padding:60px; text-align:center;"
-                    ):
-                        ui.icon("folder_open").style(
-                            f"font-size:44px; color:{TEXT_MUTED};"
+                    with ui.element("div").classes(
+                        "rounded-[10px] px-[60px] py-[60px] text-center"
+                    ).style(f"background:{PANEL_BG}; border:2px dashed {BORDER};"):
+                        ui.icon("folder_open").classes("text-[44px]").style(
+                            f"color:{TEXT_MUTED};"
                         )
-                        ui.label("No projects yet").style(
-                            f"color:{TEXT_MUTED}; font-size:15px; margin-top:14px;"
-                        )
-                        ui.label("Click '+ New Project' to get started").style(
-                            f"color:{TEXT_MUTED}; font-size:13px; margin-top:4px;"
-                        )
+                        ui.label("No projects yet").classes(
+                            "text-[15px] mt-[14px]"
+                        ).style(f"color:{TEXT_MUTED};")
+                        ui.label("Click '+ New Project' to get started").classes(
+                            "text-[13px] mt-1"
+                        ).style(f"color:{TEXT_MUTED};")
                 else:
                     for p in projects:
                         _project_card(p, refresh_projects)
@@ -81,18 +77,17 @@ def projects_page() -> None:
         refresh_projects()
 
         # ── New project dialog ────────────────────────────────────────────────
-        with ui.dialog() as new_dialog, ui.card().style(
-            f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:10px;"
-            f"padding:28px 32px; min-width:500px; gap:0;"
+        with ui.dialog() as new_dialog, ui.card().classes(
+            "rounded-[10px] px-8 py-7 min-w-[500px] gap-0"
+        ).style(
+            f"background:{PANEL_BG}; border:1px solid {BORDER};"
             f"box-shadow: 0 8px 32px rgba(0,0,0,0.12);"
         ):
-            ui.label("New Project").style(
-                f"font-size:19px; font-weight:600; color:{TEXT_PRI}; margin-bottom:20px;"
+            ui.label("New Project").classes("text-[19px] font-semibold mb-5").style(
+                f"color:{TEXT_PRI};"
             )
-            name_in = ui.input("Project Name *").props("outlined").style("width:100%;")
-            ticket_in = ui.input("Ticket Number (optional)").style(
-                "width:100%; margin-top:12px;"
-            )
+            name_in = ui.input("Project Name *").props("outlined").classes("w-full")
+            ticket_in = ui.input("Ticket Number (optional)").classes("w-full mt-3")
             type_in = (
                 ui.select(
                     [
@@ -109,11 +104,9 @@ def projects_page() -> None:
                     value="",
                 )
                 .props("outlined")
-                .style("width:100%; margin-top:12px;")
+                .classes("w-full mt-3")
             )
-            date_in = ui.input("Scheduled Date (MM-DD-YYYY)").style(
-                "width:100%; margin-top:12px;"
-            )
+            date_in = ui.input("Scheduled Date (MM-DD-YYYY)").classes("w-full mt-3")
             status_in = (
                 ui.select(
                     ["active", "on-hold", "complete", "scheduled"],
@@ -121,10 +114,10 @@ def projects_page() -> None:
                     value="active",
                 )
                 .props("outlined")
-                .style("width:100%; margin-top:12px;")
+                .classes("w-full mt-3")
             )
 
-            with ui.row().style("margin-top:26px; gap:10px; justify-content:flex-end;"):
+            with ui.row().classes("mt-[26px] gap-[10px] justify-end"):
                 ui.button("Cancel", on_click=new_dialog.close).style(
                     f"background:transparent !important; color:{TEXT_SEC} !important;"
                     f"border:1px solid {BORDER} !important; padding:8px 18px !important;"
@@ -173,47 +166,47 @@ def _project_card(project: sqlite3.Row, refresh_cb: Callable[[], None]) -> None:
     tow = project["type_of_work"] or ""
     date = project["scheduled_date"] or ""
 
-    with ui.element("div").style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:8px;"
-        f"padding:14px 18px; transition: box-shadow 0.15s, border-color 0.15s;"
+    with ui.element("div").classes(
+        "rounded-lg px-[18px] py-[14px] flex items-center gap-[14px] w-full"
+    ).style(
+        f"background:{PANEL_BG}; border:1px solid {BORDER};"
+        f"transition: box-shadow 0.15s, border-color 0.15s;"
         f"box-shadow: 0 1px 4px rgba(0,0,0,0.05);"
-        f"display:flex; align-items:center; gap:14px; width:100%;"
     ):
         # Status dot
-        ui.element("span").style(
-            f"width:9px; height:9px; border-radius:50%; background:{sc};"
-            f"flex-shrink:0; display:inline-block;"
-        )
+        ui.element("span").classes(
+            "w-[9px] h-[9px] rounded-full shrink-0 inline-block"
+        ).style(f"background:{sc};")
 
         # Text block
-        with ui.column().style("gap:2px; flex:1; min-width:0; overflow:hidden;"):
-            with ui.row().style(
-                "align-items:baseline; gap:10px; flex-wrap:nowrap; min-width:0;"
-            ):
+        with ui.column().classes("gap-[2px] flex-1 min-w-0 overflow-hidden"):
+            with ui.row().classes("items-baseline gap-[10px] flex-nowrap min-w-0"):
                 if ticket:
-                    ui.label(ticket).style(
-                        f"font-family:'JetBrains Mono',monospace; font-size:14px;"
-                        f"font-weight:700; color:{TEXT_PRI}; white-space:nowrap; flex-shrink:0;"
+                    ui.label(ticket).classes(
+                        "text-sm font-bold whitespace-nowrap shrink-0"
+                    ).style(
+                        f"font-family:'JetBrains Mono',monospace; color:{TEXT_PRI};"
                     )
                 if name and name != ticket:
-                    ui.label(name).style(
-                        f"font-size:13px; color:{TEXT_SEC}; white-space:nowrap;"
-                        f"overflow:hidden; text-overflow:ellipsis;"
-                    )
+                    ui.label(name).classes(
+                        "text-[13px] whitespace-nowrap overflow-hidden text-ellipsis"
+                    ).style(f"color:{TEXT_SEC};")
 
-            with ui.row().style("align-items:center; gap:14px;"):
+            with ui.row().classes("items-center gap-[14px]"):
                 if tow:
-                    ui.label(tow).style(f"font-size:12px; color:{TEXT_SEC};")
+                    ui.label(tow).classes("text-xs").style(f"color:{TEXT_SEC};")
                 if date:
-                    with ui.row().style("align-items:center; gap:3px;"):
-                        ui.icon("event").style(f"font-size:12px; color:{TEXT_MUTED};")
-                        ui.label(date).style(
-                            f"font-size:12px; color:{TEXT_MUTED};"
+                    with ui.row().classes("items-center gap-[3px]"):
+                        ui.icon("event").classes("text-xs").style(
+                            f"color:{TEXT_MUTED};"
+                        )
+                        ui.label(date).classes("text-xs").style(
+                            f"color:{TEXT_MUTED};"
                             f"font-family:'JetBrains Mono',monospace;"
                         )
 
         # Action buttons
-        with ui.row().style("gap:8px; align-items:center; flex-shrink:0;"):
+        with ui.row().classes("gap-2 items-center shrink-0"):
             open_btn = ui.button("OPEN").style(
                 f"background:{ACCENT} !important; color:#ffffff !important;"
                 f"font-size:12px !important; font-weight:700 !important;"
@@ -235,17 +228,19 @@ def _project_card(project: sqlite3.Row, refresh_cb: Callable[[], None]) -> None:
             def confirm_delete(
                 pid: int = project["id"], pname: str = project["name"]
             ) -> None:
-                with ui.dialog() as d, ui.card().style(
-                    f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:10px;"
-                    f"padding:26px; min-width:380px; box-shadow:0 8px 32px rgba(0,0,0,0.12);"
+                with ui.dialog() as d, ui.card().classes(
+                    "rounded-[10px] p-[26px] min-w-[380px]"
+                ).style(
+                    f"background:{PANEL_BG}; border:1px solid {BORDER};"
+                    f"box-shadow:0 8px 32px rgba(0,0,0,0.12);"
                 ):
-                    ui.label(f'Delete "{pname}"?').style(
-                        f"font-size:16px; font-weight:600; color:{TEXT_PRI}; margin-bottom:8px;"
-                    )
-                    ui.label("All associated data will be permanently removed.").style(
-                        f"font-size:13px; color:{TEXT_SEC}; margin-bottom:22px;"
-                    )
-                    with ui.row().style("gap:10px; justify-content:flex-end;"):
+                    ui.label(f'Delete "{pname}"?').classes(
+                        "text-base font-semibold mb-2"
+                    ).style(f"color:{TEXT_PRI};")
+                    ui.label(
+                        "All associated data will be permanently removed."
+                    ).classes("text-[13px] mb-[22px]").style(f"color:{TEXT_SEC};")
+                    with ui.row().classes("gap-[10px] justify-end"):
                         ui.button("Cancel", on_click=d.close).style(
                             f"background:transparent !important; color:{TEXT_SEC} !important;"
                             f"border:1px solid {BORDER} !important; padding:7px 16px !important;"

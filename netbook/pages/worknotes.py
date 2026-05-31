@@ -37,12 +37,12 @@ def worknotes_page(project_id: int) -> None:
     try:
         project_id = int(project_id)
     except (ValueError, TypeError):
-        ui.label("Invalid project ID").style(f"color:{TEXT_PRI}; padding:40px;")
+        ui.label("Invalid project ID").classes("p-10").style(f"color:{TEXT_PRI};")
         return
 
     project = db.get_project(project_id)
     if not project:
-        ui.label("Project not found").style(f"color:{TEXT_PRI}; padding:40px;")
+        ui.label("Project not found").classes("p-10").style(f"color:{TEXT_PRI};")
         return
 
     # Reactive state
@@ -53,11 +53,9 @@ def worknotes_page(project_id: int) -> None:
         render_content()
 
     # ── Page shell ────────────────────────────────────────────────────────────
-    with ui.element("div").style(
-        "display:flex; flex-direction:row; height:100vh; overflow:hidden;"
-    ):
+    with ui.element("div").classes("flex flex-row h-screen overflow-hidden"):
         # Sidebar (rebuilt on navigate to update active state)
-        sidebar_slot = ui.element("div").style("flex-shrink:0;")
+        sidebar_slot = ui.element("div").classes("shrink-0")
 
         def render_sidebar() -> None:
             sidebar_slot.clear()
@@ -65,8 +63,10 @@ def worknotes_page(project_id: int) -> None:
                 sidebar_nav(project_id, active_section["key"], navigate)
 
         # Main content
-        main = ui.element("div").style(
-            f"flex:1; overflow-y:auto; background:{DARK_BG}; padding:32px 36px;"
+        main = (
+            ui.element("div")
+            .classes("flex-1 overflow-y-auto")
+            .style(f"background:{DARK_BG}; padding:32px 36px;")
         )
 
         def render_content() -> None:
@@ -108,7 +108,7 @@ def _section_overview(project_id: int, project: sqlite3.Row) -> None:
     journal = db.get_journal(project_id)
 
     # Stats row
-    with ui.row().style("gap:12px; margin-bottom:28px; flex-wrap:wrap;"):
+    with ui.row().classes("gap-3 mb-7 flex-wrap"):
         for label, val, icon in [
             ("Devices", len(devices), "dns"),
             ("Circuits", len(circuits), "cable"),
@@ -119,8 +119,8 @@ def _section_overview(project_id: int, project: sqlite3.Row) -> None:
             _stat_card(label, val, icon)
 
     # Project details card
-    with ui.element("div").style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:8px; padding:22px; max-width:700px;"
+    with ui.element("div").classes("rounded-lg p-[22px] max-w-[700px]").style(
+        f"background:{PANEL_BG}; border:1px solid {BORDER};"
     ):
         _label_row(
             "Ticket Number", project["ticket_num"] or "—", mono=True, accent=True
@@ -137,10 +137,9 @@ def _section_overview(project_id: int, project: sqlite3.Row) -> None:
 
     # Recent journal entries
     if journal:
-        ui.label("Recent Journal").style(
-            f"font-size:13px; font-weight:600; color:{TEXT_SEC};"
-            f"text-transform:uppercase; letter-spacing:0.08em; margin-top:28px; margin-bottom:12px;"
-        )
+        ui.label("Recent Journal").classes(
+            "text-[13px] font-semibold uppercase tracking-wider mt-7 mb-3"
+        ).style(f"color:{TEXT_SEC};")
         for entry in journal[:5]:
             _journal_entry_card(entry)
 
@@ -153,7 +152,7 @@ def _section_overview(project_id: int, project: sqlite3.Row) -> None:
 def _section_devices(project_id: int) -> None:
     _page_header("dns", "Devices")
 
-    content_col = ui.column().style("gap:16px; width:100%;")
+    content_col = ui.column().classes("gap-4 w-full")
 
     def refresh() -> None:
         content_col.clear()
@@ -184,16 +183,16 @@ def _section_devices(project_id: int) -> None:
                     )
                 ui.download(output.getvalue().encode("utf-8"), "devices.csv")
 
-            with ui.row().style("gap:10px; align-items:center; margin-bottom:8px;"):
+            with ui.row().classes("gap-2.5 items-center mb-2"):
                 ui.button(
                     "Download CSV", icon="download", on_click=download_devices_csv
-                ).style(
+                ).classes("text-[12px] rounded-[5px] cursor-pointer").style(
                     f"background:{ACCENT}15; color:{ACCENT}; border:1px solid {ACCENT}33;"
-                    f"font-size:12px; padding:6px 14px; border-radius:5px; cursor:pointer;"
+                    f"padding:6px 14px;"
                 )
                 ui.label(
                     f"{len(devices)} device{'s' if len(devices) != 1 else ''}"
-                ).style(f"font-size:12px; color:{TEXT_MUTED};")
+                ).classes("text-[12px]").style(f"color:{TEXT_MUTED};")
 
             # Spreadsheet-style table
             columns = [
@@ -240,9 +239,8 @@ def _section_devices(project_id: int) -> None:
                     rows=rows_data,
                     row_key="id",
                 )
-                .style(
-                    f"width:100%; background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:8px;"
-                )
+                .classes("w-full rounded-lg")
+                .style(f"background:{PANEL_BG}; border:1px solid {BORDER};")
                 .props("flat bordered dense")
             )
 
@@ -265,36 +263,24 @@ def _section_devices(project_id: int) -> None:
             )
 
     # Add device dialog
-    with ui.dialog() as add_dlg, ui.card().style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:10px; padding:26px; min-width:500px;"
-    ):
-        ui.label("Add Device").style(
-            f"font-size:17px; font-weight:600; color:{TEXT_PRI}; margin-bottom:18px;"
+    with ui.dialog() as add_dlg, ui.card().classes(
+        "rounded-[10px] p-[26px] min-w-[500px]"
+    ).style(f"background:{PANEL_BG}; border:1px solid {BORDER};"):
+        ui.label("Add Device").classes("text-[17px] font-semibold mb-[18px]").style(
+            f"color:{TEXT_PRI};"
         )
-        hostname_in = ui.input("Hostname *").props("outlined").style("width:100%;")
+        hostname_in = ui.input("Hostname *").props("outlined").classes("w-full")
         vendor_in = (
             ui.select(["Cisco", "Juniper", "Other"], label="Vendor", value="Cisco")
             .props("outlined")
-            .style("width:100%; margin-top:10px;")
+            .classes("w-full mt-2.5")
         )
-        model_in = (
-            ui.input("Model").props("outlined").style("width:100%; margin-top:10px;")
-        )
-        mgmt_in = (
-            ui.input("Management IP")
-            .props("outlined")
-            .style("width:100%; margin-top:10px;")
-        )
-        site_in = (
-            ui.input("Site / Location")
-            .props("outlined")
-            .style("width:100%; margin-top:10px;")
-        )
-        notes_in = (
-            ui.textarea("Notes").props("outlined").style("width:100%; margin-top:10px;")
-        )
+        model_in = ui.input("Model").props("outlined").classes("w-full mt-2.5")
+        mgmt_in = ui.input("Management IP").props("outlined").classes("w-full mt-2.5")
+        site_in = ui.input("Site / Location").props("outlined").classes("w-full mt-2.5")
+        notes_in = ui.textarea("Notes").props("outlined").classes("w-full mt-2.5")
 
-        with ui.row().style("margin-top:22px; gap:10px; justify-content:flex-end;"):
+        with ui.row().classes("mt-[22px] gap-2.5 justify-end"):
             ui.button("Cancel", on_click=add_dlg.close).style(_cancel_style())
 
             def do_add() -> None:
@@ -336,19 +322,19 @@ def _device_card(
     vendor = dev["vendor"] or "Other"
     badge_class = f"badge-{vendor.lower()}"
 
-    with ui.element("div").style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:8px; padding:18px;"
+    with ui.element("div").classes("rounded-lg p-[18px]").style(
+        f"background:{PANEL_BG}; border:1px solid {BORDER};"
     ):
-        with ui.row().style("align-items:flex-start; justify-content:space-between;"):
-            with ui.column().style("gap:4px;"):
-                with ui.row().style("align-items:center; gap:10px;"):
-                    ui.label(dev["hostname"]).style(
-                        f"font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:600; color:{TEXT_PRI};"
-                    )
+        with ui.row().classes("items-start justify-between"):
+            with ui.column().classes("gap-1"):
+                with ui.row().classes("items-center gap-2.5"):
+                    ui.label(dev["hostname"]).classes(
+                        "font-mono text-[15px] font-semibold"
+                    ).style(f"color:{TEXT_PRI};")
                     ui.element("span").classes(badge_class).style("").set_content(
                         vendor
                     )
-                with ui.row().style(f"gap:20px; margin-top:4px;"):
+                with ui.row().classes("gap-5 mt-1"):
                     if dev["model"]:
                         _meta_chip("memory", dev["model"])
                     if dev["mgmt_ip"]:
@@ -356,9 +342,11 @@ def _device_card(
                     if dev["site"]:
                         _meta_chip("place", dev["site"])
 
-            with ui.row().style("gap:6px;"):
-                del_btn = ui.button("", icon="delete_outline").style(
-                    f"background:transparent; color:{TEXT_MUTED}; border:none; cursor:pointer;"
+            with ui.row().classes("gap-1.5"):
+                del_btn = (
+                    ui.button("", icon="delete_outline")
+                    .classes("cursor-pointer")
+                    .style(f"background:transparent; color:{TEXT_MUTED}; border:none;")
                 )
                 del_btn.on(
                     "click",
@@ -369,38 +357,38 @@ def _device_card(
                 )
 
         # Interfaces sub-section (always show expansion)
-        with ui.expansion("Interfaces", icon="cable").style(
-            f"margin-top:14px; background:#f8f9fb; border-radius:6px;"
-            f"border:1px solid {BORDER};"
-        ):
-            iface_col = ui.column().style("gap:6px; padding:10px 0;")
+        with ui.expansion("Interfaces", icon="cable").classes(
+            "mt-3.5 rounded-md"
+        ).style(f"background:#f8f9fb; border:1px solid {BORDER};"):
+            iface_col = ui.column().classes("gap-1.5 py-2.5")
 
             def refresh_ifaces(device_id: int = dev["id"]) -> None:
                 iface_col.clear()
                 ifaces = db.get_interfaces(device_id)
                 with iface_col:
                     if not ifaces:
-                        ui.label("No interfaces").style(
-                            f"color:{TEXT_MUTED}; font-size:12px; padding:4px 0;"
+                        ui.label("No interfaces").classes("text-[12px] py-1").style(
+                            f"color:{TEXT_MUTED};"
                         )
                     for iface in ifaces:
-                        with ui.row().style(
-                            f"align-items:center; gap:12px; padding:6px 8px;"
-                            f"background:#f0f2f5; border-radius:5px;"
+                        with ui.row().classes("items-center gap-3 rounded-[5px]").style(
+                            f"padding:6px 8px; background:#f0f2f5;"
                         ):
-                            ui.label(iface["name"]).style(
-                                f"font-family:'JetBrains Mono',monospace; font-size:12.5px; color:{ACCENT}; min-width:140px;"
-                            )
+                            ui.label(iface["name"]).classes(
+                                "font-mono text-[12.5px] min-w-[140px]"
+                            ).style(f"color:{ACCENT};")
                             if iface["ip_address"]:
-                                ui.label(iface["ip_address"]).style(
-                                    f"font-family:'JetBrains Mono',monospace; font-size:12px; color:{TEXT_SEC};"
-                                )
+                                ui.label(iface["ip_address"]).classes(
+                                    "font-mono text-[12px]"
+                                ).style(f"color:{TEXT_SEC};")
                             if iface["description"]:
-                                ui.label(iface["description"]).style(
-                                    f"font-size:12px; color:{TEXT_MUTED}; flex:1;"
-                                )
-                            del_i = ui.icon("close").style(
-                                f"font-size:14px; color:{TEXT_MUTED}; cursor:pointer; margin-left:auto;"
+                                ui.label(iface["description"]).classes(
+                                    "text-[12px] flex-1"
+                                ).style(f"color:{TEXT_MUTED};")
+                            del_i = (
+                                ui.icon("close")
+                                .classes("text-[14px] cursor-pointer ml-auto")
+                                .style(f"color:{TEXT_MUTED};")
                             )
                             del_i.on(
                                 "click",
@@ -411,19 +399,17 @@ def _device_card(
                             )
 
                     # Add interface inline
-                    with ui.row().style(
-                        "margin-top:8px; gap:8px; align-items:flex-end;"
-                    ):
+                    with ui.row().classes("mt-2 gap-2 items-end"):
                         ni = (
                             ui.input("Interface name")
                             .props("outlined")
-                            .style("flex:1;")
+                            .classes("flex-1")
                         )
-                        nip = ui.input("IP").props("outlined").style("width:140px;")
+                        nip = ui.input("IP").props("outlined").classes("w-[140px]")
                         nd = (
                             ui.input("Description / CID")
                             .props("outlined")
-                            .style("flex:2;")
+                            .classes("flex-[2]")
                         )
 
                         def add_iface(device_id: int = dev["id"]) -> None:
@@ -440,42 +426,44 @@ def _device_card(
                             nd.value = ""
                             refresh_ifaces()
 
-                        ui.button("+", on_click=add_iface).style(
+                        ui.button("+", on_click=add_iface).classes(
+                            "rounded-[5px] font-bold cursor-pointer"
+                        ).style(
                             f"background:{ACCENT}22; color:{ACCENT}; border:1px solid {ACCENT}44;"
-                            f"padding:6px 12px; border-radius:5px; font-weight:700; cursor:pointer;"
+                            f"padding:6px 12px;"
                         )
 
             refresh_ifaces()
 
         # Config snippets sub-section
-        with ui.expansion("Config Snippets", icon="code").style(
-            f"margin-top:8px; background:#f8f9fb; border-radius:6px; border:1px solid {BORDER};"
-        ):
-            snip_col = ui.column().style("gap:8px; padding:10px 0;")
+        with ui.expansion("Config Snippets", icon="code").classes(
+            "mt-2 rounded-md"
+        ).style(f"background:#f8f9fb; border:1px solid {BORDER};"):
+            snip_col = ui.column().classes("gap-2 py-2.5")
 
             def refresh_snippets(device_id: int = dev["id"]) -> None:
                 snip_col.clear()
                 snips = db.get_snippets(device_id)
                 with snip_col:
                     if not snips:
-                        ui.label("No config snippets").style(
-                            f"color:{TEXT_MUTED}; font-size:12px;"
+                        ui.label("No config snippets").classes("text-[12px]").style(
+                            f"color:{TEXT_MUTED};"
                         )
                     for s in snips:
-                        with ui.element("div").style(
-                            f"background:#f8f9fb; border:1px solid {BORDER}; border-radius:6px; padding:12px;"
+                        with ui.element("div").classes("rounded-md p-3").style(
+                            f"background:#f8f9fb; border:1px solid {BORDER};"
                         ):
-                            with ui.row().style(
-                                "align-items:center; justify-content:space-between; margin-bottom:8px;"
-                            ):
-                                ui.label(s["label"]).style(
-                                    f"font-size:13px; font-weight:600; color:{TEXT_PRI};"
-                                )
-                                with ui.row().style("gap:8px; align-items:center;"):
+                            with ui.row().classes("items-center justify-between mb-2"):
+                                ui.label(s["label"]).classes(
+                                    "text-[13px] font-semibold"
+                                ).style(f"color:{TEXT_PRI};")
+                                with ui.row().classes("gap-2 items-center"):
                                     if s["version"]:
-                                        ui.label(s["version"]).style(
-                                            f"font-size:10px; color:{TEXT_MUTED}; font-family:'JetBrains Mono',monospace;"
-                                            f"background:#f5f7fa; padding:2px 6px; border-radius:3px;"
+                                        ui.label(s["version"]).classes(
+                                            "text-[10px] font-mono rounded-[3px]"
+                                        ).style(
+                                            f"color:{TEXT_MUTED};"
+                                            f"background:#f5f7fa; padding:2px 6px;"
                                         )
                                     ui.button(
                                         "Copy",
@@ -484,38 +472,35 @@ def _device_card(
                                         ]: ui.run_javascript(
                                             f"navigator.clipboard.writeText({json.dumps(c or '')})"
                                         ),
+                                    ).classes(
+                                        "text-[11px] rounded cursor-pointer"
                                     ).style(
                                         f"background:{ACCENT}15; color:{ACCENT}; border:1px solid {ACCENT}33;"
-                                        f"font-size:11px; padding:3px 10px; border-radius:4px; cursor:pointer;"
+                                        f"padding:3px 10px;"
                                     )
-                                    ui.icon("delete_outline").style(
-                                        f"font-size:15px; color:{TEXT_MUTED}; cursor:pointer;"
-                                    ).on(
+                                    ui.icon("delete_outline").classes(
+                                        "text-[15px] cursor-pointer"
+                                    ).style(f"color:{TEXT_MUTED};").on(
                                         "click",
                                         lambda sid=s["id"]: (
                                             db.delete_snippet(sid),
                                             refresh_snippets(),
                                         ),
                                     )
-                            ui.code(s["content"] or "").style(
-                                f"font-family:'JetBrains Mono',monospace; font-size:12px; color:#1b5e20;"
-                                f"background:#f8f9fb; white-space:pre; overflow-x:auto; display:block;"
-                            )
+                            ui.code(s["content"] or "").classes(
+                                "font-mono text-[12px] whitespace-pre overflow-x-auto block"
+                            ).style(f"color:#1b5e20; background:#f8f9fb;")
 
                     # Add snippet
                     ui.separator().style(f"background:{BORDER}; margin:8px 0;")
-                    sl = ui.input("Label").props("outlined").style("width:100%;")
+                    sl = ui.input("Label").props("outlined").classes("w-full")
                     sv = (
                         ui.input("Version", value="v1")
                         .props("outlined")
-                        .style("width:120px; margin-top:8px;")
+                        .classes("w-[120px] mt-2")
                     )
-                    sc_text = (
-                        ui.textarea("Config")
-                        .classes("code-area")
-                        .style(
-                            "width:100%; margin-top:8px; font-family:'JetBrains Mono',monospace;"
-                        )
+                    sc_text = ui.textarea("Config").classes(
+                        "code-area w-full mt-2 font-mono"
                     )
 
                     def add_snip(device_id: int = dev["id"]) -> None:
@@ -533,9 +518,11 @@ def _device_card(
                         sc_text.value = ""
                         refresh_snippets()
 
-                    ui.button("Add Snippet", on_click=add_snip).style(
+                    ui.button("Add Snippet", on_click=add_snip).classes(
+                        "text-[12px] rounded-[5px] mt-2 cursor-pointer"
+                    ).style(
                         f"background:{ACCENT}18; color:{ACCENT}; border:1px solid {ACCENT}33;"
-                        f"font-size:12px; padding:6px 14px; border-radius:5px; margin-top:8px; cursor:pointer;"
+                        f"padding:6px 14px;"
                     )
 
             refresh_snippets()
@@ -549,7 +536,7 @@ def _device_card(
 def _section_circuits(project_id: int) -> None:
     _page_header("cable", "Circuits")
 
-    content_col = ui.column().style("gap:16px; width:100%;")
+    content_col = ui.column().classes("gap-4 w-full")
 
     def refresh() -> None:
         content_col.clear()
@@ -580,16 +567,16 @@ def _section_circuits(project_id: int) -> None:
                     )
                 ui.download(output.getvalue().encode("utf-8"), "circuits.csv")
 
-            with ui.row().style("gap:10px; align-items:center; margin-bottom:8px;"):
+            with ui.row().classes("gap-2.5 items-center mb-2"):
                 ui.button(
                     "Download CSV", icon="download", on_click=download_circuits_csv
-                ).style(
+                ).classes("text-[12px] rounded-[5px] cursor-pointer").style(
                     f"background:{ACCENT}15; color:{ACCENT}; border:1px solid {ACCENT}33;"
-                    f"font-size:12px; padding:6px 14px; border-radius:5px; cursor:pointer;"
+                    f"padding:6px 14px;"
                 )
                 ui.label(
                     f"{len(circuits)} circuit{'s' if len(circuits) != 1 else ''}"
-                ).style(f"font-size:12px; color:{TEXT_MUTED};")
+                ).classes("text-[12px]").style(f"color:{TEXT_MUTED};")
 
             # Spreadsheet-style table
             columns = [
@@ -650,9 +637,8 @@ def _section_circuits(project_id: int) -> None:
                     rows=rows_data,
                     row_key="id",
                 )
-                .style(
-                    f"width:100%; background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:8px;"
-                )
+                .classes("w-full rounded-lg")
+                .style(f"background:{PANEL_BG}; border:1px solid {BORDER};")
                 .props("flat bordered dense")
             )
 
@@ -675,17 +661,15 @@ def _section_circuits(project_id: int) -> None:
             )
 
     # Add circuit dialog
-    with ui.dialog() as add_dlg, ui.card().style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:10px; padding:26px; min-width:480px;"
-    ):
-        ui.label("Add Circuit").style(
-            f"font-size:17px; font-weight:600; color:{TEXT_PRI}; margin-bottom:18px;"
+    with ui.dialog() as add_dlg, ui.card().classes(
+        "rounded-[10px] p-[26px] min-w-[480px]"
+    ).style(f"background:{PANEL_BG}; border:1px solid {BORDER};"):
+        ui.label("Add Circuit").classes("text-[17px] font-semibold mb-[18px]").style(
+            f"color:{TEXT_PRI};"
         )
-        cid_in = ui.input("Circuit ID *").props("outlined").style("width:100%;")
+        cid_in = ui.input("Circuit ID *").props("outlined").classes("w-full")
         carr_in = (
-            ui.input("Carrier / Provider")
-            .props("outlined")
-            .style("width:100%; margin-top:10px;")
+            ui.input("Carrier / Provider").props("outlined").classes("w-full mt-2.5")
         )
         type_in = (
             ui.select(
@@ -703,9 +687,9 @@ def _section_circuits(project_id: int) -> None:
                 value="",
             )
             .props("outlined")
-            .style("width:100%; margin-top:10px;")
+            .classes("w-full mt-2.5")
         )
-        bw_in = ui.input("Bandwidth (e.g. 1Gbps)").style("width:100%; margin-top:10px;")
+        bw_in = ui.input("Bandwidth (e.g. 1Gbps)").classes("w-full mt-2.5")
         stat_in = (
             ui.select(
                 ["active", "pending", "in-maintenance", "decom"],
@@ -713,13 +697,11 @@ def _section_circuits(project_id: int) -> None:
                 value="active",
             )
             .props("outlined")
-            .style("width:100%; margin-top:10px;")
+            .classes("w-full mt-2.5")
         )
-        notes_in = (
-            ui.textarea("Notes").props("outlined").style("width:100%; margin-top:10px;")
-        )
+        notes_in = ui.textarea("Notes").props("outlined").classes("w-full mt-2.5")
 
-        with ui.row().style("margin-top:22px; gap:10px; justify-content:flex-end;"):
+        with ui.row().classes("mt-[22px] gap-2.5 justify-end"):
             ui.button("Cancel", on_click=add_dlg.close).style(_cancel_style())
 
             def do_add() -> None:
@@ -761,7 +743,7 @@ def _section_circuits(project_id: int) -> None:
 
 def _section_ip_plan(project_id: int) -> None:
     _page_header("lan", "IP Plan")
-    ip_col = ui.column().style("gap:8px; width:100%;")
+    ip_col = ui.column().classes("gap-2 w-full")
 
     def refresh() -> None:
         ip_col.clear()
@@ -770,35 +752,30 @@ def _section_ip_plan(project_id: int) -> None:
             if not entries:
                 _empty_state("No subnets added yet", "lan")
                 return
-            with ui.element("div").style(
+            with ui.element("div").classes(
+                "text-[10px] uppercase tracking-wider font-semibold"
+            ).style(
                 f"display:grid; grid-template-columns: 1.5fr 2fr 1.5fr 0.8fr auto;"
-                f"padding:8px 14px; font-size:10px; text-transform:uppercase;"
-                f"letter-spacing:0.08em; color:{TEXT_MUTED}; font-weight:600; gap:0;"
+                f"padding:8px 14px; color:{TEXT_MUTED};"
             ):
                 for h in ["Subnet / CIDR", "Purpose", "Assigned To", "VLAN", ""]:
                     ui.label(h)
             for e in entries:
                 _ip_row(e, refresh)
 
-    with ui.dialog() as add_dlg, ui.card().style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:10px; padding:26px; min-width:460px;"
-    ):
-        ui.label("Add IP Entry").style(
-            f"font-size:17px; font-weight:600; color:{TEXT_PRI}; margin-bottom:18px;"
+    with ui.dialog() as add_dlg, ui.card().classes(
+        "rounded-[10px] p-[26px] min-w-[460px]"
+    ).style(f"background:{PANEL_BG}; border:1px solid {BORDER};"):
+        ui.label("Add IP Entry").classes("text-[17px] font-semibold mb-[18px]").style(
+            f"color:{TEXT_PRI};"
         )
-        sub_in = ui.input("Subnet / CIDR *  (e.g. 10.0.0.0/24)").style("width:100%;")
-        pur_in = (
-            ui.input("Purpose").props("outlined").style("width:100%; margin-top:10px;")
-        )
-        asgn_in = ui.input("Assigned Device(s)").style("width:100%; margin-top:10px;")
-        vlan_in = (
-            ui.input("VLAN ID").props("outlined").style("width:100%; margin-top:10px;")
-        )
-        note_in = (
-            ui.input("Notes").props("outlined").style("width:100%; margin-top:10px;")
-        )
+        sub_in = ui.input("Subnet / CIDR *  (e.g. 10.0.0.0/24)").classes("w-full")
+        pur_in = ui.input("Purpose").props("outlined").classes("w-full mt-2.5")
+        asgn_in = ui.input("Assigned Device(s)").classes("w-full mt-2.5")
+        vlan_in = ui.input("VLAN ID").props("outlined").classes("w-full mt-2.5")
+        note_in = ui.input("Notes").props("outlined").classes("w-full mt-2.5")
 
-        with ui.row().style("margin-top:22px; gap:10px; justify-content:flex-end;"):
+        with ui.row().classes("mt-[22px] gap-2.5 justify-end"):
             ui.button("Cancel", on_click=add_dlg.close).style(_cancel_style())
 
             def do_add() -> None:
@@ -832,23 +809,22 @@ def _section_ip_plan(project_id: int) -> None:
 
 
 def _ip_row(e: sqlite3.Row, refresh_cb: Callable[[], None]) -> None:
-    with ui.element("div").style(
+    with ui.element("div").classes("rounded-md items-center").style(
         f"display:grid; grid-template-columns: 1.5fr 2fr 1.5fr 0.8fr auto;"
         f"padding:11px 14px; background:{PANEL_BG}; border:1px solid {BORDER};"
-        f"border-radius:6px; align-items:center; gap:0;"
     ):
-        ui.label(e["subnet"]).style(
-            f"font-family:'JetBrains Mono',monospace; font-size:13px; color:{ACCENT}; font-weight:600;"
+        ui.label(e["subnet"]).classes("font-mono text-[13px] font-semibold").style(
+            f"color:{ACCENT};"
         )
-        ui.label(e["purpose"] or "—").style(f"font-size:13px; color:{TEXT_SEC};")
-        ui.label(e["assigned_to"] or "—").style(
-            f"font-family:'JetBrains Mono',monospace; font-size:12px; color:{TEXT_MUTED};"
+        ui.label(e["purpose"] or "—").classes("text-[13px]").style(f"color:{TEXT_SEC};")
+        ui.label(e["assigned_to"] or "—").classes("font-mono text-[12px]").style(
+            f"color:{TEXT_MUTED};"
         )
-        ui.label(e["vlan_id"] or "—").style(
-            f"font-family:'JetBrains Mono',monospace; font-size:12px; color:{TEXT_MUTED};"
+        ui.label(e["vlan_id"] or "—").classes("font-mono text-[12px]").style(
+            f"color:{TEXT_MUTED};"
         )
-        ui.icon("delete_outline").style(
-            f"font-size:16px; color:{TEXT_MUTED}; cursor:pointer;"
+        ui.icon("delete_outline").classes("text-[16px] cursor-pointer").style(
+            f"color:{TEXT_MUTED};"
         ).on(
             "click",
             lambda eid=e["id"]: _confirm_delete(
@@ -865,7 +841,7 @@ def _ip_row(e: sqlite3.Row, refresh_cb: Callable[[], None]) -> None:
 
 def _section_paths(project_id: int) -> None:
     _page_header("route", "A-Z Paths")
-    paths_col = ui.column().style("gap:14px; width:100%;")
+    paths_col = ui.column().classes("gap-3.5 w-full")
 
     def refresh() -> None:
         paths_col.clear()
@@ -877,31 +853,25 @@ def _section_paths(project_id: int) -> None:
             for p in paths:
                 _path_card(p, project_id, refresh)
 
-    with ui.dialog() as add_dlg, ui.card().style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:10px; padding:26px; min-width:500px;"
-    ):
-        ui.label("New A-Z Path").style(
-            f"font-size:17px; font-weight:600; color:{TEXT_PRI}; margin-bottom:18px;"
+    with ui.dialog() as add_dlg, ui.card().classes(
+        "rounded-[10px] p-[26px] min-w-[500px]"
+    ).style(f"background:{PANEL_BG}; border:1px solid {BORDER};"):
+        ui.label("New A-Z Path").classes("text-[17px] font-semibold mb-[18px]").style(
+            f"color:{TEXT_PRI};"
         )
-        name_in = ui.input("Path Name *").props("outlined").style("width:100%;")
+        name_in = ui.input("Path Name *").props("outlined").classes("w-full")
         cust_in = (
-            ui.input("Customer / Service")
-            .props("outlined")
-            .style("width:100%; margin-top:10px;")
+            ui.input("Customer / Service").props("outlined").classes("w-full mt-2.5")
         )
-        a_in = ui.input("A-Side (e.g. Customer Site A)").style(
-            "width:100%; margin-top:10px;"
-        )
-        z_in = ui.input("Z-Side (e.g. Data Center)").style(
-            "width:100%; margin-top:10px;"
-        )
+        a_in = ui.input("A-Side (e.g. Customer Site A)").classes("w-full mt-2.5")
+        z_in = ui.input("Z-Side (e.g. Data Center)").classes("w-full mt-2.5")
         stat_in = (
             ui.select(["active", "in-build", "decom"], label="Status", value="active")
             .props("outlined")
-            .style("width:100%; margin-top:10px;")
+            .classes("w-full mt-2.5")
         )
 
-        with ui.row().style("margin-top:22px; gap:10px; justify-content:flex-end;"):
+        with ui.row().classes("mt-[22px] gap-2.5 justify-end"):
             ui.button("Cancel", on_click=add_dlg.close).style(_cancel_style())
 
             def do_add() -> None:
@@ -941,30 +911,28 @@ def _path_card(
     hops = db.get_path_hops(path["id"])
     sc = STATUS_COLORS.get((path["status"] or "active").lower(), TEXT_MUTED)
 
-    with ui.element("div").style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:8px; padding:20px;"
+    with ui.element("div").classes("rounded-lg p-5").style(
+        f"background:{PANEL_BG}; border:1px solid {BORDER};"
     ):
-        with ui.row().style(
-            "align-items:flex-start; justify-content:space-between; margin-bottom:16px;"
-        ):
-            with ui.column().style("gap:4px;"):
-                ui.label(path["name"]).style(
-                    f"font-size:15px; font-weight:600; color:{TEXT_PRI};"
+        with ui.row().classes("items-start justify-between mb-4"):
+            with ui.column().classes("gap-1"):
+                ui.label(path["name"]).classes("text-[15px] font-semibold").style(
+                    f"color:{TEXT_PRI};"
                 )
                 if path["customer"]:
-                    ui.label(path["customer"]).style(
-                        f"font-size:12px; color:{TEXT_MUTED};"
+                    ui.label(path["customer"]).classes("text-[12px]").style(
+                        f"color:{TEXT_MUTED};"
                     )
-            with ui.row().style("align-items:center; gap:6px;"):
+            with ui.row().classes("items-center gap-1.5"):
                 ui.element("span").style(
                     f"width:7px;height:7px;border-radius:50%;background:{sc};display:inline-block;"
                 )
-                ui.label(path["status"] or "active").style(
-                    f"font-size:12px; color:{sc};"
+                ui.label(path["status"] or "active").classes("text-[12px]").style(
+                    f"color:{sc};"
                 )
-                ui.icon("delete_outline").style(
-                    f"font-size:16px; color:{TEXT_MUTED}; cursor:pointer; margin-left:8px;"
-                ).on(
+                ui.icon("delete_outline").classes(
+                    "text-[16px] cursor-pointer ml-2"
+                ).style(f"color:{TEXT_MUTED};").on(
                     "click",
                     lambda pid=path["id"]: _confirm_delete(
                         f"Delete path '{path['name']}'?",
@@ -973,63 +941,55 @@ def _path_card(
                 )
 
         # A-side / Z-side labels
-        with ui.row().style("gap:8px; align-items:center; margin-bottom:14px;"):
+        with ui.row().classes("gap-2 items-center mb-3.5"):
             if path["a_side"]:
-                ui.label(f"A: {path['a_side']}").style(
-                    f"font-size:12px; color:{ACCENT}; background:{ACCENT}12;"
-                    f"padding:3px 10px; border-radius:4px; border:1px solid {ACCENT}33;"
+                ui.label(f"A: {path['a_side']}").classes("text-[12px] rounded").style(
+                    f"color:{ACCENT}; background:{ACCENT}12;"
+                    f"padding:3px 10px; border:1px solid {ACCENT}33;"
                 )
-            ui.icon("arrow_forward").style(f"font-size:14px; color:{TEXT_MUTED};")
+            ui.icon("arrow_forward").classes("text-[14px]").style(
+                f"color:{TEXT_MUTED};"
+            )
             if path["z_side"]:
-                ui.label(f"Z: {path['z_side']}").style(
-                    f"font-size:12px; color:#52a0c9; background:#52a0c912;"
-                    f"padding:3px 10px; border-radius:4px; border:1px solid #52a0c933;"
+                ui.label(f"Z: {path['z_side']}").classes("text-[12px] rounded").style(
+                    f"color:#52a0c9; background:#52a0c912;"
+                    f"padding:3px 10px; border:1px solid #52a0c933;"
                 )
 
         # Hop chain
-        hop_col = ui.column().style("gap:0;")
+        hop_col = ui.column().classes("gap-0")
         with hop_col:
             _render_hops(hops, hop_col)
 
         # Add hop controls
-        with ui.expansion("Add Hop", icon="add_circle_outline").style(
-            f"margin-top:10px; background:#f8f9fb; border-radius:6px; border:1px solid {BORDER};"
-        ):
+        with ui.expansion("Add Hop", icon="add_circle_outline").classes(
+            "mt-2.5 rounded-md"
+        ).style(f"background:#f8f9fb; border:1px solid {BORDER};"):
             hop_type_sel = (
                 ui.select(["device", "carrier"], label="Hop Type", value="device")
                 .props("outlined")
-                .style("width:100%;")
+                .classes("w-full")
             )
             devices = db.get_devices(project_id)
             device_names = {d["hostname"]: d["id"] for d in devices}
             dev_sel = ui.select(
                 list(device_names.keys()) or ["(no devices)"], label="Device"
-            ).style("width:100%; margin-top:10px;")
+            ).classes("w-full mt-2.5")
             ing_in = (
-                ui.input("Ingress Interface")
-                .props("outlined")
-                .style("width:100%; margin-top:10px;")
+                ui.input("Ingress Interface").props("outlined").classes("w-full mt-2.5")
             )
             egr_in = (
-                ui.input("Egress Interface")
-                .props("outlined")
-                .style("width:100%; margin-top:10px;")
+                ui.input("Egress Interface").props("outlined").classes("w-full mt-2.5")
             )
             carr_lbl_in = (
-                ui.input("Carrier Label")
-                .props("outlined")
-                .style("width:100%; margin-top:10px;")
+                ui.input("Carrier Label").props("outlined").classes("w-full mt-2.5")
             )
             circuits = db.get_circuits(project_id)
             ckt_names = {"(none)": None} | {c["cid"]: c["id"] for c in circuits}
             ckt_sel = ui.select(
                 list(ckt_names.keys()), label="Circuit ID (optional)", value="(none)"
-            ).style("width:100%; margin-top:10px;")
-            hop_notes = (
-                ui.input("Notes")
-                .props("outlined")
-                .style("width:100%; margin-top:10px;")
-            )
+            ).classes("w-full mt-2.5")
+            hop_notes = ui.input("Notes").props("outlined").classes("w-full mt-2.5")
 
             def do_add_hop(path_id: int = path["id"]) -> None:
                 next_order = len(db.get_path_hops(path_id)) + 1
@@ -1052,17 +1012,19 @@ def _path_card(
                     _render_hops(db.get_path_hops(path_id), hop_col)
                 ui.notify("Hop added", color="positive")
 
-            ui.button("Add Hop", on_click=do_add_hop).style(
+            ui.button("Add Hop", on_click=do_add_hop).classes(
+                "text-[12px] rounded-[5px] mt-3 cursor-pointer"
+            ).style(
                 f"background:{ACCENT}18; color:{ACCENT}; border:1px solid {ACCENT}33;"
-                f"font-size:12px; padding:6px 14px; border-radius:5px; margin-top:12px; cursor:pointer;"
+                f"padding:6px 14px;"
             )
 
 
 def _render_hops(hops: list[sqlite3.Row], hop_col) -> None:
     """Render the hop chain visualization. Hop deletion now refreshes the UI."""
     if not hops:
-        ui.label("No hops yet — add hops below").style(
-            f"color:{TEXT_MUTED}; font-size:12px; padding:4px 0;"
+        ui.label("No hops yet — add hops below").classes("text-[12px] py-1").style(
+            f"color:{TEXT_MUTED};"
         )
         return
 
@@ -1077,44 +1039,46 @@ def _render_hops(hops: list[sqlite3.Row], hop_col) -> None:
         bg = "#f3f4ff" if is_carrier else "#f8f9fb"
         border = "#c5cae9" if is_carrier else BORDER
 
-        with ui.element("div").style(
-            f"background:{bg}; border:1px solid {border}; border-radius:6px;"
-            f"padding:10px 14px; position:relative;"
+        with ui.element("div").classes("rounded-md relative").style(
+            f"background:{bg}; border:1px solid {border}; padding:10px 14px;"
         ):
-            with ui.row().style("align-items:center; gap:10px;"):
+            with ui.row().classes("items-center gap-2.5"):
                 if is_carrier:
-                    ui.icon("cloud").style(f"font-size:16px; color:#7e57c2;")
+                    ui.icon("cloud").classes("text-[16px]").style("color:#7e57c2;")
                     label = hop["carrier_label"] or "Carrier"
-                    ui.label(label).style(
-                        f"font-size:13px; color:#5c35a0; font-weight:600;"
+                    ui.label(label).classes("text-[13px] font-semibold").style(
+                        "color:#5c35a0;"
                     )
                     if hop["cid"]:
-                        ui.label(f"CID: {hop['cid']}").style(
-                            f"font-family:'JetBrains Mono',monospace; font-size:11px;"
-                            f"color:{ACCENT}; background:{ACCENT}12; padding:2px 8px; border-radius:3px;"
+                        ui.label(f"CID: {hop['cid']}").classes(
+                            "font-mono text-[11px] rounded-[3px]"
+                        ).style(
+                            f"color:{ACCENT}; background:{ACCENT}12; padding:2px 8px;"
                         )
                 else:
-                    ui.icon("dns").style(f"font-size:16px; color:{ACCENT};")
-                    ui.label(hop["hostname"] or "—").style(
-                        f"font-family:'JetBrains Mono',monospace; font-size:13px; color:{TEXT_PRI}; font-weight:600;"
-                    )
+                    ui.icon("dns").classes("text-[16px]").style(f"color:{ACCENT};")
+                    ui.label(hop["hostname"] or "—").classes(
+                        "font-mono text-[13px] font-semibold"
+                    ).style(f"color:{TEXT_PRI};")
                     if hop["vendor"]:
                         vendor_color = JUNIPER if hop["vendor"] == "Juniper" else CISCO
-                        ui.label(hop["vendor"]).style(
-                            f"font-size:11px; color:{vendor_color}; background:{vendor_color}18;"
-                            f"padding:1px 7px; border-radius:3px;"
+                        ui.label(hop["vendor"]).classes(
+                            "text-[11px] rounded-[3px]"
+                        ).style(
+                            f"color:{vendor_color}; background:{vendor_color}18;"
+                            f"padding:1px 7px;"
                         )
                     if hop["ingress_iface"]:
-                        ui.label(f"in: {hop['ingress_iface']}").style(
-                            f"font-family:'JetBrains Mono',monospace; font-size:11px; color:{TEXT_MUTED};"
-                        )
+                        ui.label(f"in: {hop['ingress_iface']}").classes(
+                            "font-mono text-[11px]"
+                        ).style(f"color:{TEXT_MUTED};")
                     if hop["egress_iface"]:
-                        ui.label(f"out: {hop['egress_iface']}").style(
-                            f"font-family:'JetBrains Mono',monospace; font-size:11px; color:{TEXT_MUTED};"
-                        )
-                ui.icon("delete_outline").style(
-                    f"font-size:14px; color:{TEXT_MUTED}; cursor:pointer; margin-left:auto;"
-                ).on(
+                        ui.label(f"out: {hop['egress_iface']}").classes(
+                            "font-mono text-[11px]"
+                        ).style(f"color:{TEXT_MUTED};")
+                ui.icon("delete_outline").classes(
+                    "text-[14px] cursor-pointer ml-auto"
+                ).style(f"color:{TEXT_MUTED};").on(
                     "click",
                     lambda hid=hop["id"], pid=hop["path_id"]: _delete_and_refresh(
                         hid, pid
@@ -1166,22 +1130,19 @@ def _section_journal(project_id: int) -> None:
         ui.download(content.encode("utf-8"), "journal.md")
 
     # ── Sticky header row: title left, controls right ─────────────────────────
-    with ui.element("div").style(
-        f"position:sticky; top:0; z-index:10; background:{DARK_BG};"
-        f"padding-bottom:12px; width:100%;"
+    with ui.element("div").classes("sticky top-0 z-10 w-full pb-3").style(
+        f"background:{DARK_BG};"
     ):
-        with ui.row().style(
-            "align-items:center; justify-content:space-between; width:100%;"
-        ):
+        with ui.row().classes("items-center justify-between w-full"):
             # Left: page title
-            with ui.row().style("align-items:center; gap:12px;"):
-                ui.icon("history_edu").style(f"font-size:22px; color:{ACCENT};")
-                ui.label("Journal").style(
-                    f"font-size:22px; font-weight:600; color:{TEXT_PRI};"
+            with ui.row().classes("items-center gap-3"):
+                ui.icon("history_edu").classes("text-[22px]").style(f"color:{ACCENT};")
+                ui.label("Journal").classes("text-[22px] font-semibold").style(
+                    f"color:{TEXT_PRI};"
                 )
 
             # Right: Add + Export buttons
-            with ui.row().style("align-items:center; gap:10px;"):
+            with ui.row().classes("items-center gap-2.5"):
 
                 def do_add() -> None:
                     title_val = title_combo.value.strip() if title_combo.value else ""
@@ -1204,15 +1165,17 @@ def _section_journal(project_id: int) -> None:
                     entry_in.value = ""
                     ui.notify("Note added — see sidebar", color="positive")
 
-                ui.button("+ ADD", on_click=do_add).style(
-                    f"background:{ACCENT}; color:#ffffff; font-weight:600;"
-                    f"padding:8px 20px; border-radius:6px; border:none; cursor:pointer;"
+                ui.button("+ ADD", on_click=do_add).classes(
+                    "font-semibold rounded-md cursor-pointer"
+                ).style(
+                    f"background:{ACCENT}; color:#ffffff;"
+                    f"padding:8px 20px; border:none;"
                 )
                 ui.button(
                     "EXPORT NOTES", icon="download", on_click=export_journal
-                ).style(
-                    f"background:{ACCENT}; color:#ffffff; font-weight:600;"
-                    f"padding:8px 20px; border-radius:6px; border:none; cursor:pointer;"
+                ).classes("font-semibold rounded-md cursor-pointer").style(
+                    f"background:{ACCENT}; color:#ffffff;"
+                    f"padding:8px 20px; border:none;"
                 )
 
     # ── Combined title/link field (select a device/circuit or type a custom title)
@@ -1223,17 +1186,15 @@ def _section_journal(project_id: int) -> None:
             autocomplete=combo_options,
         )
         .props("outlined dense")
-        .style("width:100%; margin-bottom:8px;")
+        .classes("w-full mb-2")
     )
 
     # ── Notes input (full width, scales with window) ──────────────────────────
     entry_in = (
         ui.textarea("Type a note, command, or observation...")
         .props("outlined autogrow")
-        .style(
-            "width:100%; font-family:'JetBrains Mono',monospace; font-size:13px;"
-            "min-height:calc(100vh - 250px);"
-        )
+        .classes("w-full font-mono text-[13px]")
+        .style("min-height:calc(100vh - 250px);")
     )
 
 
@@ -1272,27 +1233,25 @@ def _journal_entry_card(
         )
     )
 
-    with ui.element("div").style(
+    with ui.element("div").classes("rounded-md").style(
         f"background:{PANEL_BG}; border:1px solid {BORDER}; border-left:3px solid {ACCENT};"
-        f"border-radius:6px; padding:12px 16px;"
+        f"padding:12px 16px;"
     ):
         # Header row: timestamp + linked context + actions
-        with ui.row().style("align-items:center; gap:10px; margin-bottom:6px;"):
-            ui.label(ts).style(
-                f"font-family:'JetBrains Mono',monospace; font-size:11px; color:{TEXT_MUTED};"
-            )
+        with ui.row().classes("items-center gap-2.5 mb-1.5"):
+            ui.label(ts).classes("font-mono text-[11px]").style(f"color:{TEXT_MUTED};")
             if linked_device:
-                ui.label(f"🖥 {linked_device}").style(
-                    f"font-size:11px; color:{ACCENT}; background:{ACCENT}12;"
-                    f"padding:2px 8px; border-radius:4px; border:1px solid {ACCENT}33;"
+                ui.label(f"🖥 {linked_device}").classes("text-[11px] rounded").style(
+                    f"color:{ACCENT}; background:{ACCENT}12;"
+                    f"padding:2px 8px; border:1px solid {ACCENT}33;"
                 )
             elif linked_circuit:
-                ui.label(f"🔌 {linked_circuit}").style(
-                    f"font-size:11px; color:{CISCO}; background:{CISCO}12;"
-                    f"padding:2px 8px; border-radius:4px; border:1px solid {CISCO}33;"
+                ui.label(f"🔌 {linked_circuit}").classes("text-[11px] rounded").style(
+                    f"color:{CISCO}; background:{CISCO}12;"
+                    f"padding:2px 8px; border:1px solid {CISCO}33;"
                 )
             # Spacer + actions
-            with ui.row().style("margin-left:auto; gap:6px; align-items:center;"):
+            with ui.row().classes("ml-auto gap-1.5 items-center"):
                 ui.button(
                     "",
                     icon="content_copy",
@@ -1307,24 +1266,22 @@ def _journal_entry_card(
 
         # Title (if present)
         if title:
-            ui.label(title).style(
-                f"font-size:14px; font-weight:600; color:{TEXT_PRI}; margin-bottom:4px;"
+            ui.label(title).classes("text-[14px] font-semibold mb-1").style(
+                f"color:{TEXT_PRI};"
             )
 
         # Entry text
-        font = (
-            "font-family:'JetBrains Mono',monospace; font-size:12.5px;"
-            if is_command
-            else "font-size:13.5px;"
-        )
-        bg_style = (
-            f"background:#f8f9fb; padding:8px 12px; border-radius:4px; border:1px solid {BORDER};"
-            if is_command
-            else ""
-        )
-        ui.label(text).style(
-            f"{font} color:{TEXT_PRI}; line-height:1.6; white-space:pre-wrap; {bg_style}"
-        )
+        if is_command:
+            ui.label(text).classes(
+                "font-mono text-[12.5px] whitespace-pre-wrap leading-relaxed rounded"
+            ).style(
+                f"color:{TEXT_PRI}; background:#f8f9fb; padding:8px 12px;"
+                f"border:1px solid {BORDER};"
+            )
+        else:
+            ui.label(text).classes(
+                "text-[13.5px] whitespace-pre-wrap leading-relaxed"
+            ).style(f"color:{TEXT_PRI};")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1344,7 +1301,7 @@ def _section_journal_entry(
             break
 
     if not entry:
-        ui.label("Entry not found").style(f"color:{TEXT_PRI}; padding:40px;")
+        ui.label("Entry not found").classes("p-10").style(f"color:{TEXT_PRI};")
         return
 
     ts = entry["created_at"][:16].replace("T", " ") if entry["created_at"] else "—"
@@ -1354,27 +1311,26 @@ def _section_journal_entry(
     text = entry["entry"] or ""
 
     # Back link
-    back = ui.element("div").style(
-        f"display:flex; align-items:center; gap:6px; color:{TEXT_MUTED};"
-        f"font-size:13px; cursor:pointer; margin-bottom:20px;"
+    back = (
+        ui.element("div")
+        .classes("flex items-center gap-1.5 text-[13px] cursor-pointer mb-5")
+        .style(f"color:{TEXT_MUTED};")
     )
     with back:
-        ui.icon("arrow_back").style("font-size:16px;")
-        ui.label("Back to Journal").style("font-size:13px;")
+        ui.icon("arrow_back").classes("text-[16px]")
+        ui.label("Back to Journal").classes("text-[13px]")
     back.on("click", lambda: navigate("journal"))
 
     # Header row with title + action buttons
-    with ui.row().style(
-        "align-items:center; justify-content:space-between; width:100%; margin-bottom:16px;"
-    ):
-        with ui.row().style("align-items:center; gap:12px;"):
-            ui.icon("history_edu").style(f"font-size:22px; color:{ACCENT};")
-            ui.label(title or "Journal Entry").style(
-                f"font-size:22px; font-weight:600; color:{TEXT_PRI};"
-            )
+    with ui.row().classes("items-center justify-between w-full mb-4"):
+        with ui.row().classes("items-center gap-3"):
+            ui.icon("history_edu").classes("text-[22px]").style(f"color:{ACCENT};")
+            ui.label(title or "Journal Entry").classes(
+                "text-[22px] font-semibold"
+            ).style(f"color:{TEXT_PRI};")
 
         # Action buttons
-        with ui.row().style("align-items:center; gap:8px;"):
+        with ui.row().classes("items-center gap-2"):
 
             def do_delete() -> None:
                 db.delete_journal_entry(entry_id)
@@ -1384,9 +1340,10 @@ def _section_journal_entry(
             def open_edit() -> None:
                 edit_dlg.open()
 
-            ui.button("EDIT", icon="edit", on_click=open_edit).style(
-                f"background:{ACCENT}; color:#ffffff; font-weight:600;"
-                f"padding:8px 18px; border-radius:6px; border:none; cursor:pointer;"
+            ui.button("EDIT", icon="edit", on_click=open_edit).classes(
+                "font-semibold rounded-md cursor-pointer"
+            ).style(
+                f"background:{ACCENT}; color:#ffffff;" f"padding:8px 18px; border:none;"
             )
             ui.button(
                 "DELETE",
@@ -1394,70 +1351,63 @@ def _section_journal_entry(
                 on_click=lambda: _confirm_delete(
                     f"Delete this journal entry?", do_delete
                 ),
-            ).style(
-                "background:#c62828; color:#ffffff; font-weight:600;"
-                "padding:8px 18px; border-radius:6px; border:none; cursor:pointer;"
+            ).classes("font-semibold rounded-md cursor-pointer").style(
+                "background:#c62828; color:#ffffff;" "padding:8px 18px; border:none;"
             )
 
     # Metadata row
-    with ui.row().style("align-items:center; gap:12px; margin-bottom:16px;"):
-        ui.label(ts).style(
-            f"font-family:'JetBrains Mono',monospace; font-size:12px; color:{TEXT_MUTED};"
-        )
+    with ui.row().classes("items-center gap-3 mb-4"):
+        ui.label(ts).classes("font-mono text-[12px]").style(f"color:{TEXT_MUTED};")
         if linked_device:
-            ui.label(f"🖥 {linked_device}").style(
-                f"font-size:12px; color:{ACCENT}; background:{ACCENT}12;"
-                f"padding:3px 10px; border-radius:4px; border:1px solid {ACCENT}33;"
+            ui.label(f"🖥 {linked_device}").classes("text-[12px] rounded").style(
+                f"color:{ACCENT}; background:{ACCENT}12;"
+                f"padding:3px 10px; border:1px solid {ACCENT}33;"
             )
         elif linked_circuit:
-            ui.label(f"🔌 {linked_circuit}").style(
-                f"font-size:12px; color:{CISCO}; background:{CISCO}12;"
-                f"padding:3px 10px; border-radius:4px; border:1px solid {CISCO}33;"
+            ui.label(f"🔌 {linked_circuit}").classes("text-[12px] rounded").style(
+                f"color:{CISCO}; background:{CISCO}12;"
+                f"padding:3px 10px; border:1px solid {CISCO}33;"
             )
 
     # Entry content
-    with ui.element("div").style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:8px;"
-        f"padding:20px; width:100%;"
+    with ui.element("div").classes("rounded-lg p-5 w-full").style(
+        f"background:{PANEL_BG}; border:1px solid {BORDER};"
     ):
-        ui.label(text).style(
-            f"font-family:'JetBrains Mono',monospace; font-size:13px;"
-            f"color:{TEXT_PRI}; line-height:1.7; white-space:pre-wrap;"
-        )
+        ui.label(text).classes(
+            "font-mono text-[13px] whitespace-pre-wrap leading-[1.7]"
+        ).style(f"color:{TEXT_PRI};")
 
     # Copy button
-    with ui.row().style("margin-top:12px;"):
+    with ui.row().classes("mt-3"):
         ui.button(
             "Copy to clipboard",
             icon="content_copy",
             on_click=lambda: ui.run_javascript(
                 f"navigator.clipboard.writeText({json.dumps(text)})"
             ),
-        ).style(
+        ).classes("text-[12px] rounded-[5px] cursor-pointer").style(
             f"background:{ACCENT}15; color:{ACCENT}; border:1px solid {ACCENT}33;"
-            f"font-size:12px; padding:6px 14px; border-radius:5px; cursor:pointer;"
+            f"padding:6px 14px;"
         )
 
     # ── Edit dialog ───────────────────────────────────────────────────────────
-    with ui.dialog() as edit_dlg, ui.card().style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:10px;"
-        f"padding:26px; min-width:600px; min-height:400px; resize:both; overflow:auto;"
-    ):
-        ui.label("Edit Journal Entry").style(
-            f"font-size:17px; font-weight:600; color:{TEXT_PRI}; margin-bottom:18px;"
-        )
+    with ui.dialog() as edit_dlg, ui.card().classes(
+        "rounded-[10px] p-[26px] min-w-[600px] min-h-[400px] resize overflow-auto"
+    ).style(f"background:{PANEL_BG}; border:1px solid {BORDER};"):
+        ui.label("Edit Journal Entry").classes(
+            "text-[17px] font-semibold mb-[18px]"
+        ).style(f"color:{TEXT_PRI};")
         edit_title = (
-            ui.input("Title", value=title or "").props("outlined").style("width:100%;")
+            ui.input("Title", value=title or "").props("outlined").classes("w-full")
         )
         edit_text = (
             ui.textarea("Entry", value=text)
             .props("outlined")
-            .style(
-                "width:100%; margin-top:10px; font-family:'JetBrains Mono',monospace;"
-                "font-size:13px; min-height:250px; resize:both; overflow:auto;"
+            .classes(
+                "w-full mt-2.5 font-mono text-[13px] min-h-[250px] resize overflow-auto"
             )
         )
-        with ui.row().style("margin-top:20px; gap:10px; justify-content:flex-end;"):
+        with ui.row().classes("mt-5 gap-2.5 justify-end"):
             ui.button("Cancel", on_click=edit_dlg.close).style(_cancel_style())
 
             def do_save() -> None:
@@ -1474,9 +1424,10 @@ def _section_journal_entry(
                 ui.notify("Entry updated", color="positive")
                 navigate(f"journal:{entry_id}")
 
-            ui.button("Save", on_click=do_save).style(
-                f"background:{ACCENT}; color:#ffffff; font-weight:600;"
-                f"padding:8px 22px; border-radius:6px; border:none; cursor:pointer;"
+            ui.button("Save", on_click=do_save).classes(
+                "font-semibold rounded-md cursor-pointer"
+            ).style(
+                f"background:{ACCENT}; color:#ffffff;" f"padding:8px 22px; border:none;"
             )
 
 
@@ -1486,39 +1437,38 @@ def _section_journal_entry(
 
 
 def _page_header(icon: str, title: str) -> None:
-    with ui.row().style("align-items:center; gap:12px; margin-bottom:24px;"):
-        ui.icon(icon).style(f"font-size:22px; color:{ACCENT};")
-        ui.label(title).style(f"font-size:22px; font-weight:600; color:{TEXT_PRI};")
+    with ui.row().classes("items-center gap-3 mb-6"):
+        ui.icon(icon).classes("text-[22px]").style(f"color:{ACCENT};")
+        ui.label(title).classes("text-[22px] font-semibold").style(f"color:{TEXT_PRI};")
 
 
 def _add_button(label: str, on_click: Callable[[], None]) -> None:
-    ui.button(f"+ {label}", on_click=on_click).style(
+    ui.button(f"+ {label}", on_click=on_click).classes(
+        "text-[13px] font-semibold rounded-md cursor-pointer mb-4"
+    ).style(
         f"background:{ACCENT}18; color:{ACCENT}; border:1px solid {ACCENT}44;"
-        f"font-size:13px; font-weight:600; padding:8px 18px; border-radius:6px;"
-        f"cursor:pointer; margin-bottom:16px;"
+        f"padding:8px 18px;"
     )
 
 
 def _empty_state(msg: str, icon: str) -> None:
-    with ui.element("div").style(
-        f"background:{PANEL_BG}; border:1px dashed {BORDER}; border-radius:8px;"
-        f"padding:50px; text-align:center; width:100%;"
+    with ui.element("div").classes("rounded-lg text-center w-full").style(
+        f"background:{PANEL_BG}; border:1px dashed {BORDER}; padding:50px;"
     ):
-        ui.icon(icon).style(f"font-size:36px; color:{TEXT_MUTED};")
-        ui.label(msg).style(f"color:{TEXT_MUTED}; font-size:14px; margin-top:10px;")
+        ui.icon(icon).classes("text-[36px]").style(f"color:{TEXT_MUTED};")
+        ui.label(msg).classes("text-[14px] mt-2.5").style(f"color:{TEXT_MUTED};")
 
 
 def _stat_card(label: str, value: int, icon: str) -> None:
-    with ui.element("div").style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:8px;"
-        f"padding:16px 20px; min-width:130px;"
+    with ui.element("div").classes("rounded-lg min-w-[130px]").style(
+        f"background:{PANEL_BG}; border:1px solid {BORDER}; padding:16px 20px;"
     ):
-        ui.icon(icon).style(f"font-size:18px; color:{ACCENT}; margin-bottom:8px;")
-        ui.label(str(value)).style(
-            f"font-size:26px; font-weight:700; color:{TEXT_PRI};"
+        ui.icon(icon).classes("text-[18px] mb-2").style(f"color:{ACCENT};")
+        ui.label(str(value)).classes("text-[26px] font-bold").style(
+            f"color:{TEXT_PRI};"
         )
-        ui.label(label).style(
-            f"font-size:11px; color:{TEXT_MUTED}; text-transform:uppercase; letter-spacing:0.08em;"
+        ui.label(label).classes("text-[11px] uppercase tracking-wider").style(
+            f"color:{TEXT_MUTED};"
         )
 
 
@@ -1526,29 +1476,29 @@ def _label_row(
     label: str, value: str, mono: bool = False, accent: bool = False
 ) -> None:
     color = ACCENT if accent else TEXT_PRI
-    font = (
-        f"font-family:'JetBrains Mono',monospace; font-size:13px;"
-        if mono
-        else f"font-size:14px;"
-    )
-    with ui.row().style(
-        f"align-items:baseline; padding:8px 0; border-bottom:1px solid {BORDER}; gap:0;"
+    with ui.row().classes("items-baseline py-2 gap-0").style(
+        f"border-bottom:1px solid {BORDER};"
     ):
-        ui.label(label).style(
-            f"font-size:12px; color:{TEXT_MUTED}; width:160px; flex-shrink:0;"
+        ui.label(label).classes("text-[12px] w-[160px] shrink-0").style(
+            f"color:{TEXT_MUTED};"
         )
-        ui.label(value).style(f"{font} color:{color}; font-weight:500;")
+        if mono:
+            ui.label(value).classes("font-mono text-[13px] font-medium").style(
+                f"color:{color};"
+            )
+        else:
+            ui.label(value).classes("text-[14px] font-medium").style(f"color:{color};")
 
 
 def _meta_chip(icon: str, text: str, mono: bool = False) -> None:
-    font = (
-        "font-family:'JetBrains Mono',monospace; font-size:11.5px;"
-        if mono
-        else "font-size:12px;"
-    )
-    with ui.row().style(f"align-items:center; gap:4px;"):
-        ui.icon(icon).style(f"font-size:13px; color:{TEXT_MUTED};")
-        ui.label(text).style(f"{font} color:{TEXT_SEC};")
+    with ui.row().classes("items-center gap-1"):
+        ui.icon(icon).classes("text-[13px]").style(f"color:{TEXT_MUTED};")
+        if mono:
+            ui.label(text).classes("font-mono text-[11.5px]").style(
+                f"color:{TEXT_SEC};"
+            )
+        else:
+            ui.label(text).classes("text-[12px]").style(f"color:{TEXT_SEC};")
 
 
 def _primary_btn_style() -> str:
@@ -1566,20 +1516,20 @@ def _cancel_style() -> str:
 
 
 def _confirm_delete(message: str, on_confirm: Callable[[], None]) -> None:
-    with ui.dialog() as d, ui.card().style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:10px; padding:24px;"
+    with ui.dialog() as d, ui.card().classes("rounded-[10px] p-6").style(
+        f"background:{PANEL_BG}; border:1px solid {BORDER};"
     ):
-        ui.label(message).style(
-            f"font-size:15px; font-weight:600; color:{TEXT_PRI}; margin-bottom:16px;"
+        ui.label(message).classes("text-[15px] font-semibold mb-4").style(
+            f"color:{TEXT_PRI};"
         )
-        with ui.row().style("gap:10px; justify-content:flex-end;"):
+        with ui.row().classes("gap-2.5 justify-end"):
             ui.button("Cancel", on_click=d.close).style(_cancel_style())
 
             def do() -> None:
                 on_confirm()
                 d.close()
 
-            ui.button("Delete", on_click=do).style(
-                "background:#c62828; color:white; font-weight:600; padding:8px 18px; border-radius:6px; border:none;"
+            ui.button("Delete", on_click=do).classes("font-semibold rounded-md").style(
+                "background:#c62828; color:white; padding:8px 18px; border:none;"
             )
     d.open()
