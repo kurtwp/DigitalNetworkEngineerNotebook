@@ -23,7 +23,6 @@ from netbook.theme import (
     TEXT_MUTED,
     JUNIPER,
     CISCO,
-    TAG_COLORS,
     STATUS_COLORS,
 )
 import netbook.database as db
@@ -140,7 +139,7 @@ def _section_overview(project_id: int, project: sqlite3.Row) -> None:
             f"text-transform:uppercase; letter-spacing:0.08em; margin-top:28px; margin-bottom:12px;"
         )
         for entry in journal[:5]:
-            _journal_entry_card(entry, show_delete=False)
+            _journal_entry_card(entry)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1133,60 +1132,98 @@ def _render_hops(hops: list[sqlite3.Row], hop_col) -> None:
 
 def _section_journal(project_id: int) -> None:
     _page_header("history_edu", "Journal")
-    journal_col = ui.column().style("gap:10px; width:100%; max-width:800px;")
+
+    # Build device/circuit options for linking
+    devices = db.get_devices(project_id)
+    circuits = db.get_circuits(project_id)
+    link_options: dict[str, tuple[int | None, int | None]] = {"(none)": (None, None)}
+    for d in devices:
+        link_options[f"🖥 {d['hostname']}"] = (d["id"], None)
+    for c in circuits:
+        link_options[f"🔌 {c['cid']}"] = (None, c["id"])
+
+    journal_col = ui.column().style("gap:8px; width:100%; max-width:800px;")
 
     def refresh() -> None:
         journal_col.clear()
         entries = db.get_journal(project_id)
         with journal_col:
             if not entries:
-                _empty_state("No journal entries yet", "history_edu")
-
+                _empty_state("No notes yet — add one above", "history_edu")
+                return
             for e in entries:
                 _journal_entry_card(
                     e,
-                    show_delete=True,
                     on_delete=lambda eid=e["id"]: (
                         db.delete_journal_entry(eid),
                         refresh(),
                     ),
                 )
 
-    # Add entry area
+    # ── Input area (always visible at top) ────────────────────────────────────
     with ui.element("div").style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:8px; padding:18px; max-width:800px; margin-bottom:20px;"
+        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:8px;"
+        f"padding:16px 18px; max-width:800px; margin-bottom:16px;"
     ):
-        ui.label("New Entry").style(
-            f"font-size:13px; font-weight:600; color:{TEXT_SEC}; margin-bottom:10px;"
+        entry_in = (
+            ui.textarea("Type a note, command, or observation...")
+            .props("outlined autogrow")
+            .style(
+                "width:100%; font-family:'JetBrains Mono',monospace; font-size:13px;"
+            )
         )
-        with ui.row().style("gap:10px; align-items:flex-start;"):
-            tag_sel = (
+        with ui.row().style("margin-top:10px; gap:10px; align-items:center;"):
+            link_sel = (
                 ui.select(
-                    ["info", "pre-check", "action", "issue", "post-check"],
-                    value="info",
-                    label="Tag",
+                    list(link_options.keys()),
+                    value="(none)",
+                    label="Link to device/circuit (optional)",
                 )
-                .props("outlined")
-                .style("width:130px;")
-            )
-            entry_in = (
-                ui.textarea("Entry text...")
-                .props("outlined")
-                .style("flex:1; font-family:'IBM Plex Sans',sans-serif;")
+                .props("outlined dense")
+                .style("min-width:250px;")
             )
 
-        def do_add() -> None:
-            if not entry_in.value.strip():
-                ui.notify("Entry cannot be empty", color="negative")
-                return
-            db.add_journal_entry(project_id, entry_in.value.strip(), tag=tag_sel.value)
-            entry_in.value = ""
-            refresh()
-            ui.notify("Entry added", color="positive")
+            def do_add() -> None:
+                if not entry_in.value.strip():
+                    ui.notify("Note cannot be empty", color="negative")
+                    return
+                device_id, circuit_id = link_options.get(link_sel.value, (None, None))
+                db.add_journal_entry(
+                    project_id,
+                    entry_in.value.strip(),
+                    device_id=device_id,
+                    circuit_id=circuit_id,
+                )
+                entry_in.value = ""
+                link_sel.value = "(none)"
+                refresh()
+                ui.notify("Note added", color="positive")
 
-        ui.button("Add Entry", on_click=do_add).style(
-            f"background:{ACCENT}; color:#f0f2f5; font-weight:600;"
-            f"padding:8px 20px; border-radius:6px; border:none; cursor:pointer; margin-top:10px;"
+            ui.button("+ Add", on_click=do_add).style(
+                f"background:{ACCENT}; color:#ffffff; font-weight:600;"
+                f"padding:8px 20px; border-radius:6px; border:none; cursor:pointer;"
+                f"margin-left:auto;"
+            )
+
+    # ── Export button ─────────────────────────────────────────────────────────
+    def export_journal() -> None:
+        entries = db.get_journal(project_id)
+        lines: list[str] = []
+        for e in entries:
+            ts = e["created_at"][:16].replace("T", " ") if e["created_at"] else "—"
+            link = ""
+            if e["hostname"]:
+                link = f"  [device: {e['hostname']}]"
+            elif e["cid"]:
+                link = f"  [circuit: {e['cid']}]"
+            lines.append(f"[{ts}]{link}\n{e['entry']}\n")
+        content = "\n".join(lines)
+        ui.download(content.encode("utf-8"), "journal.md")
+
+    with ui.row().style("gap:10px; margin-bottom:12px; max-width:800px;"):
+        ui.button("Export Notes", icon="download", on_click=export_journal).style(
+            f"background:{ACCENT}15; color:{ACCENT}; border:1px solid {ACCENT}33;"
+            f"font-size:12px; padding:6px 14px; border-radius:5px; cursor:pointer;"
         )
 
     refresh()
@@ -1194,32 +1231,84 @@ def _section_journal(project_id: int) -> None:
 
 def _journal_entry_card(
     entry: sqlite3.Row,
-    show_delete: bool = False,
     on_delete: Callable[[], None] | None = None,
 ) -> None:
-    """Render a single journal entry card."""
-    tag = entry["tag"] or "info"
-    bg, tc = TAG_COLORS.get(tag, ("#3a4060", "#8b9edd"))
+    """Render a single journal entry as a clean note card."""
     ts = entry["created_at"][:16].replace("T", " ") if entry["created_at"] else "—"
+    linked_device = entry["hostname"] if "hostname" in entry.keys() else None
+    linked_circuit = entry["cid"] if "cid" in entry.keys() else None
+    text = entry["entry"] or ""
+
+    # Detect if entry looks like a command (single line, starts with common CLI patterns)
+    is_command = (
+        "\n" not in text.strip()
+        and len(text) < 200
+        and any(
+            text.strip().startswith(p)
+            for p in [
+                "show ",
+                "set ",
+                "delete ",
+                "ping ",
+                "traceroute ",
+                "no ",
+                "interface ",
+                "router ",
+                "ip ",
+                "configure",
+                "commit",
+                "rollback",
+                "request ",
+            ]
+        )
+    )
 
     with ui.element("div").style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-left:3px solid {tc};"
+        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-left:3px solid {ACCENT};"
         f"border-radius:6px; padding:12px 16px;"
     ):
-        with ui.row().style("align-items:center; gap:10px; margin-bottom:8px;"):
-            ui.element("span").classes("tag-pill").style(
-                f"background:{bg}; color:{tc}; padding:2px 9px; border-radius:10px;"
-                f"font-size:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;"
-            ).set_content(tag)
+        # Header row: timestamp + linked context + actions
+        with ui.row().style("align-items:center; gap:10px; margin-bottom:6px;"):
             ui.label(ts).style(
                 f"font-family:'JetBrains Mono',monospace; font-size:11px; color:{TEXT_MUTED};"
             )
-            if show_delete and on_delete:
-                ui.icon("delete_outline").style(
-                    f"font-size:15px; color:{TEXT_MUTED}; cursor:pointer; margin-left:auto;"
-                ).on("click", on_delete)
-        ui.label(entry["entry"]).style(
-            f"font-size:13.5px; color:{TEXT_PRI}; line-height:1.6; white-space:pre-wrap;"
+            if linked_device:
+                ui.label(f"🖥 {linked_device}").style(
+                    f"font-size:11px; color:{ACCENT}; background:{ACCENT}12;"
+                    f"padding:2px 8px; border-radius:4px; border:1px solid {ACCENT}33;"
+                )
+            elif linked_circuit:
+                ui.label(f"🔌 {linked_circuit}").style(
+                    f"font-size:11px; color:{CISCO}; background:{CISCO}12;"
+                    f"padding:2px 8px; border-radius:4px; border:1px solid {CISCO}33;"
+                )
+            # Spacer + actions
+            with ui.row().style("margin-left:auto; gap:6px; align-items:center;"):
+                ui.button(
+                    "",
+                    icon="content_copy",
+                    on_click=lambda t=text: ui.run_javascript(
+                        f"navigator.clipboard.writeText({json.dumps(t)})"
+                    ),
+                ).props("flat dense size=sm").style(f"color:{TEXT_MUTED};")
+                if on_delete:
+                    ui.button("", icon="delete_outline", on_click=on_delete).props(
+                        "flat dense size=sm"
+                    ).style(f"color:{TEXT_MUTED};")
+
+        # Entry text
+        font = (
+            "font-family:'JetBrains Mono',monospace; font-size:12.5px;"
+            if is_command
+            else "font-size:13.5px;"
+        )
+        bg_style = (
+            f"background:#f8f9fb; padding:8px 12px; border-radius:4px; border:1px solid {BORDER};"
+            if is_command
+            else ""
+        )
+        ui.label(text).style(
+            f"{font} color:{TEXT_PRI}; line-height:1.6; white-space:pre-wrap; {bg_style}"
         )
 
 

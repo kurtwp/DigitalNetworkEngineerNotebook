@@ -122,13 +122,30 @@ def init_db() -> None:
                 CREATE TABLE IF NOT EXISTS journal_entries (
                     id          INTEGER PRIMARY KEY AUTOINCREMENT,
                     project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-                    tag         TEXT DEFAULT 'info',
                     entry       TEXT NOT NULL,
+                    device_id   INTEGER REFERENCES devices(id) ON DELETE SET NULL,
+                    circuit_id  INTEGER REFERENCES circuits(id) ON DELETE SET NULL,
                     created_at  TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
                 );
             """
             )
         log.info("Database initialized at %s", DB_PATH)
+        # Migrate journal_entries: add device_id/circuit_id if missing, drop tag
+        try:
+            cols = [
+                row[1]
+                for row in conn.execute("PRAGMA table_info(journal_entries)").fetchall()
+            ]
+            if "device_id" not in cols:
+                conn.execute(
+                    "ALTER TABLE journal_entries ADD COLUMN device_id INTEGER REFERENCES devices(id) ON DELETE SET NULL"
+                )
+            if "circuit_id" not in cols:
+                conn.execute(
+                    "ALTER TABLE journal_entries ADD COLUMN circuit_id INTEGER REFERENCES circuits(id) ON DELETE SET NULL"
+                )
+        except sqlite3.Error:
+            pass  # table may not exist yet on first run
     except sqlite3.Error as exc:
         log.error("Failed to initialize database: %s", exc, exc_info=True)
         raise
@@ -594,11 +611,15 @@ def delete_snippet(snippet_id: int) -> None:
 
 
 def get_journal(project_id: int) -> list[sqlite3.Row]:
-    """Return all journal entries for a project (newest first)."""
+    """Return all journal entries for a project (newest first), with linked device/circuit info."""
     try:
         with get_conn() as conn:
             return conn.execute(
-                "SELECT * FROM journal_entries WHERE project_id=? ORDER BY created_at DESC",
+                """SELECT j.*, d.hostname, c.cid
+                   FROM journal_entries j
+                   LEFT JOIN devices d ON j.device_id = d.id
+                   LEFT JOIN circuits c ON j.circuit_id = c.id
+                   WHERE j.project_id=? ORDER BY j.created_at DESC""",
                 (project_id,),
             ).fetchall()
     except sqlite3.Error as exc:
@@ -606,13 +627,18 @@ def get_journal(project_id: int) -> list[sqlite3.Row]:
         return []
 
 
-def add_journal_entry(project_id: int, entry: str, tag: str = "info") -> int | None:
+def add_journal_entry(
+    project_id: int,
+    entry: str,
+    device_id: int | None = None,
+    circuit_id: int | None = None,
+) -> int | None:
     """Add a journal entry and return its ID."""
     try:
         with get_conn() as conn:
             cur = conn.execute(
-                "INSERT INTO journal_entries (project_id, entry, tag) VALUES (?,?,?)",
-                (project_id, entry, tag),
+                "INSERT INTO journal_entries (project_id, entry, device_id, circuit_id) VALUES (?,?,?,?)",
+                (project_id, entry, device_id, circuit_id),
             )
             return cur.lastrowid
     except sqlite3.Error as exc:

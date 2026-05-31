@@ -207,25 +207,81 @@ The Work Notes page opens as a full NiceGUI page at the route `/worknotes/{ticke
 
 ---
 
-## Journal (Change Log)
+## Journal (Notes & Commands)
 
-The Journal replaces the old Notes textarea. It is an **append-only timestamped log** — ideal for documenting activity during a change window, troubleshooting session, or site visit.
+The Journal is a fast, frictionless scratchpad for capturing notes, one-off commands, and observations during a project. It replaces the old tagged change-log approach with a simpler model optimized for real-time use during change windows, troubleshooting, and documentation.
 
-Each entry contains:
-- Timestamp (auto-stamped on creation, editable)
-- Entry text (markdown supported)
-- Optional tag (pre-check, action, issue, post-check, info)
+### Core Concept
 
-**Example:**
+- Simple timestamped text entries — no tags, no categories.
+- Think of it as a notepad you scribble on during a call or change window.
+- Entries can be short (a one-liner) or multi-line (pasted CLI output, config snippets).
+- Optional linking to a specific device or circuit in the project.
+
+### Entry Fields
+
+Each journal entry contains:
+- **Timestamp** — auto-stamped on creation
+- **Entry text** — free-form text, supports multi-line content
+- **Linked context** (optional) — associate the note with a device hostname or circuit ID from the project
+
+### Input
+
+- Always-visible text input at the top of the journal section. Type, click Add (or press Enter), done.
+- Multi-line support for pasting commands or output.
+- Optional device/circuit selector with autocomplete from the project's existing inventory.
+- When a note is linked to a device or circuit, it appears both in the journal timeline AND on that device/circuit's detail view.
+
+### Display
+
+- Chronological list (newest first).
+- Each entry shows: timestamp, text content, and linked device/circuit (if any).
+- Long entries (pasted output) auto-collapse with a "show more" toggle.
+- Monospace rendering for entries that look like commands or config.
+- Copy button on each entry for quick paste into a terminal.
+
+### Features
+
+- Search/filter by keyword across all entries.
+- Export all notes as plain text or markdown (for post-change reports or handoff).
+- Delete individual entries.
+- Entries linked to a device/circuit surface on that item's detail view.
+
+### Example
 
 ```
-[2026-05-02 12:00]  [pre-check]   Verified BGP sessions up on PE1 and PE2
-[2026-05-02 12:15]  [action]      Removed BGP neighbor — traffic shifted to backup
-[2026-05-02 12:45]  [issue]       Unexpected flap on xe-0/0/2 — investigated
-[2026-05-02 13:10]  [post-check]  All services confirmed stable, change complete
+┌─────────────────────────────────────────────────────┐
+│  [text input ........................] [+ Add]      │
+│  [optional: link to device/circuit ▼]               │
+├─────────────────────────────────────────────────────┤
+│  2026-05-31 14:22                                   │
+│  show bgp summary | match 10.0.0.1                  │
+│  ↳ linked to: PE1-CHI                          [⋮]  │
+│─────────────────────────────────────────────────────│
+│  2026-05-31 14:18                                   │
+│  Customer confirmed cutover window 02:00-04:00 UTC  │
+│                                                [⋮]  │
+│─────────────────────────────────────────────────────│
+│  2026-05-31 13:55                                   │
+│  set interfaces xe-0/0/2 disable                    │
+│  ↳ linked to: PE2-DAL                          [⋮]  │
+└─────────────────────────────────────────────────────┘
 ```
 
-New entries are added via an "Add Entry" button — no editing of past entries to preserve log integrity. Entries are stored in `worknotes.db`.
+### Data Model Change
+
+```sql
+journal_entries (
+    id          INTEGER PRIMARY KEY,
+    project_id  INTEGER NOT NULL REFERENCES projects(id),
+    entry       TEXT NOT NULL,
+    device_id   INTEGER REFERENCES devices(id) ON DELETE SET NULL,
+    circuit_id  INTEGER REFERENCES circuits(id) ON DELETE SET NULL,
+    created_at  TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+)
+```
+
+The `tag` column is removed. `device_id` and `circuit_id` are added for optional linking.
 
 ---
 
