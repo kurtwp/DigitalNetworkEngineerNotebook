@@ -88,6 +88,7 @@ def apply_global_styles() -> None:
       .q-item {{ color: {TEXT_PRI} !important; }}
       .q-menu {{ background: {PANEL_BG} !important; border: 1px solid {BORDER} !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; }}
       .q-dialog .q-card {{ background: {PANEL_BG} !important; border: 1px solid {BORDER} !important; box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important; resize: both !important; overflow: auto !important; max-width: 90vw !important; max-height: 90vh !important; }}
+      .q-dialog .q-card .q-field__native {{ resize: none !important; }}
       .q-table {{ background: {PANEL_BG} !important; }}
       .q-table th {{ color: {TEXT_SEC} !important; border-color: {BORDER} !important; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; background: #f8f9fb !important; }}
       .q-table td {{ color: {TEXT_PRI} !important; border-color: {DARK_BG} !important; }}
@@ -132,7 +133,7 @@ def apply_global_styles() -> None:
       /* Ensure textarea fields stretch full width */
       .q-textarea {{ width: 100% !important; }}
       .q-textarea .q-field__control {{ width: 100% !important; }}
-      .q-textarea .q-field__native {{ overflow: auto !important; resize: both !important; }}
+      .q-textarea .q-field__native {{ overflow: auto !important; }}
 
       /* Card */
       .nb-card {{ background: {PANEL_BG}; border: 1px solid {BORDER}; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }}
