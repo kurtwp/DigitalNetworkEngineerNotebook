@@ -161,7 +161,10 @@ def apply_global_styles() -> None:
 
 
 def sidebar_nav(
-    project_id: int, active_section: str, on_navigate: Callable[[str], None]
+    project_id: int,
+    active_section: str,
+    on_navigate: Callable[[str], None],
+    journal_expanded: bool = False,
 ) -> None:
     """Render the left sidebar with project context and nav links."""
     from netbook.database import get_project
@@ -244,35 +247,9 @@ def sidebar_nav(
                     ui.label(label).classes("text-[13.5px] flex-1")
                 item.on("click", lambda k=key: on_navigate(k))
 
-                # Journal sub-items in a collapsible container
-                if key == "journal" and journal_entries:
-                    sub_container = ui.element("div").classes("pl-10 pb-1")
-                    # Start visible if active, hidden otherwise
-                    if not is_active:
-                        sub_container.set_visibility(False)
-
-                    # Add toggle chevron to the journal nav item
-                    chevron = (
-                        ui.icon("expand_more" if is_active else "chevron_right")
-                        .classes("text-[14px] cursor-pointer")
-                        .style(f"color:{TEXT_MUTED};")
-                    )
-
-                    def toggle_journal(sc=sub_container, ch=chevron):
-                        if sc.visible:
-                            sc.set_visibility(False)
-                            ch._props["name"] = "chevron_right"
-                            ch.update()
-                        else:
-                            sc.set_visibility(True)
-                            ch._props["name"] = "expand_more"
-                            ch.update()
-
-                    chevron.on("click", toggle_journal)
-                    # Move chevron into the nav-item (append to item)
-                    chevron.move(item)
-
-                    with sub_container:
+                # Journal sub-items: shown when expanded
+                if key == "journal" and journal_entries and journal_expanded:
+                    with ui.element("div").classes("pl-10 pb-1"):
                         for entry in journal_entries:
                             entry_title = (
                                 entry["title"]

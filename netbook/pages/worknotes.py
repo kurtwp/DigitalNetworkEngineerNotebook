@@ -47,8 +47,17 @@ def worknotes_page(project_id: int) -> None:
 
     # Reactive state
     active_section: dict[str, str] = {"key": "overview"}
+    journal_expanded: dict[str, bool] = {"value": False}
 
     def navigate(section_key: str) -> None:
+        # Toggle journal sub-menu when clicking Journal while already on it
+        if section_key == "journal" and active_section["key"].startswith("journal"):
+            journal_expanded["value"] = not journal_expanded["value"]
+        elif section_key == "journal":
+            journal_expanded["value"] = True
+        elif not section_key.startswith("journal:"):
+            journal_expanded["value"] = False
+
         active_section["key"] = section_key
         render_content()
 
@@ -60,7 +69,12 @@ def worknotes_page(project_id: int) -> None:
         def render_sidebar() -> None:
             sidebar_slot.clear()
             with sidebar_slot:
-                sidebar_nav(project_id, active_section["key"], navigate)
+                sidebar_nav(
+                    project_id,
+                    active_section["key"],
+                    navigate,
+                    journal_expanded["value"],
+                )
 
         # Main content
         main = (
