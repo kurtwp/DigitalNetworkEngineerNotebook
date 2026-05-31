@@ -29,29 +29,30 @@ def projects_page() -> None:
     """Render the main projects listing page."""
     apply_global_styles()
 
-    with ui.element("div").classes("min-h-screen px-16 py-14").style(
+    with ui.element("div").classes("min-h-screen px-16 py-12").style(
         f"background:{DARK_BG};"
     ):
-        # Header
-        with ui.row().classes("items-center justify-between mb-12 max-w-[900px]"):
-            with ui.column().classes("gap-1"):
-                ui.label("NET NOTEBOOK").classes(
-                    "text-[11px] font-bold tracking-[0.18em]"
-                ).style(f"font-family:'JetBrains Mono',monospace; color:{ACCENT};")
-                ui.label("Projects").classes(
-                    "text-[28px] font-semibold leading-tight"
-                ).style(f"color:{TEXT_PRI};")
+        # Top bar: branding + action button
+        with ui.row().classes("items-center justify-between mb-6 max-w-[900px]"):
+            ui.label("NET NOTEBOOK").classes(
+                "text-[11px] font-bold tracking-[0.18em]"
+            ).style(f"font-family:'JetBrains Mono',monospace; color:{ACCENT};")
 
             new_btn = ui.button("+ New Project").style(
                 f"background:{ACCENT} !important; color:#ffffff !important; font-weight:600 !important;"
-                f"font-size:13px !important; padding:10px 24px !important;"
-                f"border-radius:6px !important; border:none !important;"
-                f"box-shadow: 0 2px 6px rgba(46,125,50,0.3) !important;"
+                f"font-size:13px !important; padding:10px 28px !important;"
+                f"border-radius:8px !important; border:none !important;"
+                f"box-shadow: 0 2px 8px rgba(46,125,50,0.25) !important;"
                 f"text-transform: none !important;"
             )
 
+        # Page title
+        ui.label("Projects").classes("text-[32px] font-bold mb-10").style(
+            f"color:{TEXT_PRI};"
+        )
+
         # Project cards
-        cards_col = ui.column().classes("gap-3 w-full max-w-[900px]")
+        cards_col = ui.column().classes("gap-4 w-full max-w-[900px]")
 
         def refresh_projects() -> None:
             cards_col.clear()
