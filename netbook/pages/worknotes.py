@@ -1431,9 +1431,10 @@ def _section_journal_entry(
         )
 
     # ── Edit dialog ───────────────────────────────────────────────────────────
-    with ui.dialog() as edit_dlg, ui.card().classes(
-        "rounded-[10px] p-[26px] min-w-[600px] min-h-[400px] resize overflow-auto"
-    ).style(f"background:{PANEL_BG}; border:1px solid {BORDER};"):
+    with ui.dialog() as edit_dlg, ui.card().classes("rounded-[10px] p-[26px]").style(
+        f"background:{PANEL_BG}; border:1px solid {BORDER};"
+        f"min-width:600px; min-height:400px; resize:both; overflow:auto;"
+    ):
         ui.label("Edit Journal Entry").classes(
             "text-[17px] font-semibold mb-[18px]"
         ).style(f"color:{TEXT_PRI};")
