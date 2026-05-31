@@ -86,6 +86,9 @@ def worknotes_page(project_id: int) -> None:
                     _section_paths(project_id)
                 elif section == "journal":
                     _section_journal(project_id)
+                elif section.startswith("journal:"):
+                    entry_id = int(section.split(":")[1])
+                    _section_journal_entry(project_id, entry_id, navigate)
 
         render_content()
 
@@ -1338,6 +1341,95 @@ def _journal_entry_card(
         )
         ui.label(text).style(
             f"{font} color:{TEXT_PRI}; line-height:1.6; white-space:pre-wrap; {bg_style}"
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# JOURNAL ENTRY DETAIL
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _section_journal_entry(
+    project_id: int, entry_id: int, navigate: Callable[[str], None]
+) -> None:
+    """Show a single journal entry detail view."""
+    entries = db.get_journal(project_id)
+    entry = None
+    for e in entries:
+        if e["id"] == entry_id:
+            entry = e
+            break
+
+    if not entry:
+        ui.label("Entry not found").style(f"color:{TEXT_PRI}; padding:40px;")
+        return
+
+    # Back link
+    with ui.row().style(
+        "align-items:center; gap:8px; margin-bottom:20px; cursor:pointer;"
+    ):
+        back = ui.element("div").style(
+            f"display:flex; align-items:center; gap:6px; color:{TEXT_MUTED};"
+            f"font-size:13px; cursor:pointer;"
+        )
+        with back:
+            ui.icon("arrow_back").style("font-size:16px;")
+            ui.label("Back to Journal").style("font-size:13px;")
+        back.on("click", lambda: navigate("journal"))
+
+    ts = entry["created_at"][:16].replace("T", " ") if entry["created_at"] else "—"
+    title = entry["title"] if "title" in entry.keys() and entry["title"] else None
+    linked_device = entry["hostname"] if "hostname" in entry.keys() else None
+    linked_circuit = entry["cid"] if "cid" in entry.keys() else None
+    text = entry["entry"] or ""
+
+    # Header
+    with ui.row().style("align-items:center; gap:12px; margin-bottom:16px;"):
+        ui.icon("history_edu").style(f"font-size:22px; color:{ACCENT};")
+        if title:
+            ui.label(title).style(f"font-size:22px; font-weight:600; color:{TEXT_PRI};")
+        else:
+            ui.label("Journal Entry").style(
+                f"font-size:22px; font-weight:600; color:{TEXT_PRI};"
+            )
+
+    # Metadata row
+    with ui.row().style("align-items:center; gap:12px; margin-bottom:16px;"):
+        ui.label(ts).style(
+            f"font-family:'JetBrains Mono',monospace; font-size:12px; color:{TEXT_MUTED};"
+        )
+        if linked_device:
+            ui.label(f"🖥 {linked_device}").style(
+                f"font-size:12px; color:{ACCENT}; background:{ACCENT}12;"
+                f"padding:3px 10px; border-radius:4px; border:1px solid {ACCENT}33;"
+            )
+        elif linked_circuit:
+            ui.label(f"🔌 {linked_circuit}").style(
+                f"font-size:12px; color:{CISCO}; background:{CISCO}12;"
+                f"padding:3px 10px; border-radius:4px; border:1px solid {CISCO}33;"
+            )
+
+    # Entry content
+    with ui.element("div").style(
+        f"background:{PANEL_BG}; border:1px solid {BORDER}; border-radius:8px;"
+        f"padding:20px; width:100%;"
+    ):
+        ui.label(text).style(
+            f"font-family:'JetBrains Mono',monospace; font-size:13px;"
+            f"color:{TEXT_PRI}; line-height:1.7; white-space:pre-wrap;"
+        )
+
+    # Copy button
+    with ui.row().style("margin-top:12px;"):
+        ui.button(
+            "Copy to clipboard",
+            icon="content_copy",
+            on_click=lambda: ui.run_javascript(
+                f"navigator.clipboard.writeText({json.dumps(text)})"
+            ),
+        ).style(
+            f"background:{ACCENT}15; color:{ACCENT}; border:1px solid {ACCENT}33;"
+            f"font-size:12px; padding:6px 14px; border-radius:5px; cursor:pointer;"
         )
 
 
