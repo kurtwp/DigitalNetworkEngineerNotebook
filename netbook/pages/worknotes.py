@@ -89,7 +89,7 @@ def worknotes_page(project_id: int) -> None:
             with main:
                 section = active_section["key"]
                 if section == "overview":
-                    _section_overview(project_id, project)
+                    _section_overview(project_id, project, navigate)
                 elif section == "devices":
                     _section_devices(project_id)
                 elif section == "circuits":
@@ -112,7 +112,7 @@ def worknotes_page(project_id: int) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _section_overview(project_id: int, project: sqlite3.Row) -> None:
+def _section_overview(project_id: int, project: sqlite3.Row, navigate: Callable[[str], None]) -> None:
     _page_header("grid_view", "Overview")
 
     devices = db.get_devices(project_id)
@@ -155,7 +155,15 @@ def _section_overview(project_id: int, project: sqlite3.Row) -> None:
             "text-[13px] font-semibold uppercase tracking-wider mt-7 mb-3"
         ).style(f"color:{TEXT_SEC};")
         for entry in journal[:5]:
-            _journal_entry_card(entry)
+            entry_id = entry["id"]
+            title = entry["title"] if "title" in entry.keys() and entry["title"] else "Untitled"
+            ts = entry["created_at"][:16].replace("T", " ") if entry["created_at"] else ""
+            with ui.row().classes("items-center gap-3 py-1"):
+                ui.label(ts).classes("font-mono text-[11px]").style(f"color:{TEXT_MUTED};")
+                link = ui.label(title).classes(
+                    "text-[14px] cursor-pointer"
+                ).style(f"color:{ACCENT}; text-decoration:underline;")
+                link.on("click", lambda eid=entry_id: navigate(f"journal:{eid}"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1231,9 +1239,9 @@ def _section_journal(project_id: int) -> None:
     # ── Notes input (full width, scales with window) ──────────────────────────
     inputs["entry"] = (
         ui.textarea("Type a note, command, or observation...")
-        .props("outlined")
+        .props('outlined input-style="resize:both; overflow:auto; min-height:200px; height:calc(100vh - 280px);"')
         .classes("font-mono text-[13px]")
-        .style("width:100%; height:calc(100vh - 280px); overflow:auto; resize:both;")
+        .style("width:100%;")
     )
 
 
@@ -1409,16 +1417,17 @@ def _section_journal_entry(
             )
 
     # Entry content
-    with ui.element("div").classes("rounded-lg p-5 w-full").style(
+    with ui.element("div").classes("rounded-lg w-full").style(
         f"background:{PANEL_BG}; border:1px solid {BORDER};"
         f"max-height:calc(100vh - 300px); overflow:auto;"
+        f"padding:28px 32px 48px 32px; margin-top:16px; margin-bottom:40px;"
     ):
         ui.label(text).classes(
             "font-mono text-[13px] whitespace-pre-wrap leading-[1.7]"
         ).style(f"color:{TEXT_PRI};")
 
     # Copy button
-    with ui.row().classes("mt-3"):
+    with ui.row().classes("mt-12"):
         ui.button(
             "Copy to clipboard",
             icon="content_copy",
