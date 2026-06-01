@@ -60,6 +60,9 @@ def apply_global_styles() -> None:
         background: {DARK_BG} !important;
         font-family: 'Roboto', sans-serif !important;
         color: {TEXT_PRI} !important;
+         /* ── Add line to shift everything to the right ── */
+        padding-left: 48px !important; 
+        padding-top: 16px !important; /* Optional: adds nice spacing to the top
       }}
 
       /* Scrollbar */
