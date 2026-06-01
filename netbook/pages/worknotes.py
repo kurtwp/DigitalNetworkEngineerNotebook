@@ -1433,22 +1433,20 @@ def _section_journal_entry(
     # ── Edit dialog ───────────────────────────────────────────────────────────
     with ui.dialog() as edit_dlg, ui.card().classes("rounded-[10px]").style(
         f"background:{PANEL_BG}; border:1px solid {BORDER};"
-        f"min-width:600px; min-height:400px; resize:both; overflow:hidden;"
-        f"display:flex; flex-direction:column; padding:26px;"
+        f"min-width:600px; width:70vw; max-width:900px; padding:26px;"
     ):
         ui.label("Edit Journal Entry").classes(
-            "text-[17px] font-semibold mb-[18px] shrink-0"
+            "text-[17px] font-semibold mb-[18px]"
         ).style(f"color:{TEXT_PRI};")
         edit_title = (
             ui.input("Title", value=title or "")
             .props("outlined")
-            .classes("w-full shrink-0")
+            .classes("w-full")
         )
         edit_text = (
             ui.textarea("Entry", value=text)
-            .props("outlined")
+            .props('outlined autogrow')
             .classes("w-full mt-2.5 font-mono text-[13px]")
-            .style("flex:1; overflow:auto;")
         )
         with ui.row().classes("mt-4 gap-2.5 justify-end shrink-0"):
             ui.button("Cancel", on_click=edit_dlg.close).style(_cancel_style())
