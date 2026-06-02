@@ -1368,39 +1368,12 @@ def _section_journal_entry(
         ui.label("Back to Journal").classes("text-[13px]")
     back.on("click", lambda: navigate("journal"))
 
-    # Header row with title + action buttons
-    with ui.row().classes("items-center justify-between w-full mb-4"):
-        with ui.row().classes("items-center gap-3"):
-            ui.icon("history_edu").classes("text-[22px]").style(f"color:{ACCENT};")
-            ui.label(title or "Journal Entry").classes(
-                "text-[22px] font-semibold"
-            ).style(f"color:{TEXT_PRI};")
-
-        # Action buttons
-        with ui.row().classes("items-center gap-2"):
-
-            def do_delete() -> None:
-                db.delete_journal_entry(entry_id)
-                ui.notify("Entry deleted", color="negative")
-                navigate("journal")
-
-            def open_edit() -> None:
-                edit_dlg.open()
-
-            ui.button("EDIT", icon="edit", on_click=open_edit).classes(
-                "font-semibold rounded-md cursor-pointer"
-            ).style(
-                f"background:{ACCENT}; color:#ffffff;" f"padding:8px 18px; border:none;"
-            )
-            ui.button(
-                "DELETE",
-                icon="delete",
-                on_click=lambda: _confirm_delete(
-                    f"Delete this journal entry?", do_delete
-                ),
-            ).classes("font-semibold rounded-md cursor-pointer").style(
-                "background:#c62828; color:#ffffff;" "padding:8px 18px; border:none;"
-            )
+    # Header row with title + metadata
+    with ui.row().classes("items-center gap-3 mb-2"):
+        ui.icon("history_edu").classes("text-[22px]").style(f"color:{ACCENT};")
+        ui.label(title or "Journal Entry").classes(
+            "text-[22px] font-semibold"
+        ).style(f"color:{TEXT_PRI};")
 
     # Metadata row
     with ui.row().classes("items-center gap-3 mb-4"):
@@ -1416,18 +1389,85 @@ def _section_journal_entry(
                 f"padding:3px 10px; border:1px solid {CISCO}33;"
             )
 
-    # Entry content
-    with ui.element("div").classes("rounded-lg w-full").style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER};"
-        f"max-height:calc(100vh - 300px); overflow:auto;"
-        f"padding:28px 32px 48px 32px; margin-top:16px; margin-bottom:40px;"
-    ):
-        ui.label(text).classes(
-            "font-mono text-[13px] whitespace-pre-wrap leading-[1.7]"
-        ).style(f"color:{TEXT_PRI};")
+    # Write / Preview tabs + content area
+    tab_panel_container = ui.column().classes("w-full").style("width:100%;")
 
-    # Copy button
-    with ui.row().classes("mt-12"):
+    # State holders for edit fields
+    edit_title_ref: dict = {"el": None}
+    edit_text_ref: dict = {"el": None}
+
+    with tab_panel_container:
+        with ui.tabs().classes("w-full").props("no-caps inline-label").style("margin-bottom:8px;") as tabs:
+            tab_preview = ui.tab("Preview", icon="visibility")
+            tab_write = ui.tab("Write", icon="edit")
+
+        with ui.tab_panels(tabs, value=tab_preview).classes("w-full").style(
+            "width:100%; min-height:300px;"
+        ) as panels:
+            # Preview panel
+            with ui.tab_panel(tab_preview).classes("p-0"):
+                with ui.element("div").classes("rounded-lg w-full").style(
+                    f"background:{PANEL_BG}; border:1px solid {BORDER};"
+                    f"max-height:calc(100vh - 350px); overflow:auto;"
+                    f"padding:28px 32px 48px 32px; margin-top:8px;"
+                ):
+                    ui.label(text).classes(
+                        "font-mono text-[13px] whitespace-pre-wrap leading-[1.7]"
+                    ).style(f"color:{TEXT_PRI};")
+
+            # Write panel
+            with ui.tab_panel(tab_write).classes("p-0"):
+                edit_title_ref["el"] = (
+                    ui.input("Title", value=title or "")
+                    .props("outlined")
+                    .classes("w-full mb-4")
+                    .style("width:100%;")
+                )
+                edit_text_ref["el"] = (
+                    ui.textarea("Entry", value=text)
+                    .props('outlined input-style="height:calc(100vh - 420px); overflow-y:auto; resize:none;"')
+                    .classes("w-full font-mono text-[13px]")
+                    .style("width:100%; max-height:calc(100vh - 380px); overflow:hidden;")
+                )
+
+    # Action buttons row — always visible
+    with ui.row().classes("mt-16 gap-3 items-center"):
+        def do_save() -> None:
+            t = edit_title_ref["el"]
+            e = edit_text_ref["el"]
+            if not t.value.strip():
+                ui.notify("Title is required", color="negative")
+                return
+            if not e.value.strip():
+                ui.notify("Entry cannot be empty", color="negative")
+                return
+            db.update_journal_entry(entry_id, t.value.strip(), e.value.strip())
+            ui.notify("Entry updated", color="positive")
+            navigate(f"journal:{entry_id}")
+
+        def do_delete() -> None:
+            db.delete_journal_entry(entry_id)
+            ui.notify("Entry deleted", color="negative")
+            navigate("journal")
+
+        ui.button("SAVE", icon="save", on_click=do_save).classes(
+            "font-semibold rounded-md cursor-pointer"
+        ).style(
+            f"background:{ACCENT}; color:#ffffff; padding:8px 22px; border:none;"
+        )
+        ui.button(
+            "DELETE",
+            icon="delete",
+            on_click=lambda: _confirm_delete("Delete this journal entry?", do_delete),
+        ).classes("font-semibold rounded-md cursor-pointer").style(
+            "background:#c62828; color:#ffffff; padding:8px 18px; border:none;"
+        )
+        ui.button("CANCEL", icon="close", on_click=lambda: navigate("journal")).classes(
+            "font-semibold rounded-md cursor-pointer"
+        ).style(_cancel_style())
+
+        # Copy button (on the right)
+        ui.element("div").classes("flex-1")  # spacer
         ui.button(
             "Copy to clipboard",
             icon="content_copy",
@@ -1438,47 +1478,6 @@ def _section_journal_entry(
             f"background:{ACCENT}15; color:{ACCENT}; border:1px solid {ACCENT}33;"
             f"padding:6px 14px;"
         )
-
-    # ── Edit dialog ───────────────────────────────────────────────────────────
-    with ui.dialog() as edit_dlg, ui.card().classes("rounded-[10px]").style(
-        f"background:{PANEL_BG}; border:1px solid {BORDER};"
-        f"min-width:600px; width:70vw; max-width:900px; padding:26px;"
-    ):
-        ui.label("Edit Journal Entry").classes(
-            "text-[17px] font-semibold mb-[18px]"
-        ).style(f"color:{TEXT_PRI};")
-        edit_title = (
-            ui.input("Title", value=title or "")
-            .props("outlined")
-            .classes("w-full")
-        )
-        edit_text = (
-            ui.textarea("Entry", value=text)
-            .props('outlined autogrow')
-            .classes("w-full mt-2.5 font-mono text-[13px]")
-        )
-        with ui.row().classes("mt-4 gap-2.5 justify-end shrink-0"):
-            ui.button("Cancel", on_click=edit_dlg.close).style(_cancel_style())
-
-            def do_save() -> None:
-                if not edit_title.value.strip():
-                    ui.notify("Title is required", color="negative")
-                    return
-                if not edit_text.value.strip():
-                    ui.notify("Entry cannot be empty", color="negative")
-                    return
-                db.update_journal_entry(
-                    entry_id, edit_title.value.strip(), edit_text.value.strip()
-                )
-                edit_dlg.close()
-                ui.notify("Entry updated", color="positive")
-                navigate(f"journal:{entry_id}")
-
-            ui.button("Save", on_click=do_save).classes(
-                "font-semibold rounded-md cursor-pointer"
-            ).style(
-                f"background:{ACCENT}; color:#ffffff;" f"padding:8px 22px; border:none;"
-            )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
