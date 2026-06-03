@@ -93,8 +93,8 @@ def apply_global_styles() -> None:
       .q-dialog .q-card {{ background: {PANEL_BG} !important; border: 1px solid {BORDER} !important; box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important; overflow: auto !important; max-width: 90vw !important; max-height: 90vh !important; resize: both !important; }}
       .q-dialog .q-card textarea {{ resize: none !important; }}
       .q-table {{ background: {PANEL_BG} !important; }}
-      .q-table th {{ color: {TEXT_SEC} !important; border-color: {BORDER} !important; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; background: #f8f9fb !important; }}
-      .q-table td {{ color: {TEXT_PRI} !important; border-color: {DARK_BG} !important; }}
+      .q-table th {{ color: {TEXT_SEC} !important; border-color: {BORDER} !important; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; background: #f8f9fb !important; padding: 12px 16px !important; }}
+      .q-table td {{ color: {TEXT_PRI} !important; border-color: {DARK_BG} !important; padding: 10px 16px !important; }}
       .q-table tbody tr:hover td {{ background: #f5f7fa !important; }}
       .q-separator {{ background: {BORDER} !important; }}
       .q-tab {{ color: {TEXT_SEC} !important; }}

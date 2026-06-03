@@ -58,7 +58,7 @@ def init_db() -> None:
                     id          INTEGER PRIMARY KEY AUTOINCREMENT,
                     project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
                     hostname    TEXT NOT NULL,
-                    vendor      TEXT CHECK(vendor IN ('Juniper','Cisco','Other')),
+                    vendor      TEXT,
                     model       TEXT,
                     mgmt_ip     TEXT,
                     site        TEXT,
@@ -149,6 +149,33 @@ def init_db() -> None:
                 conn.execute("ALTER TABLE journal_entries ADD COLUMN title TEXT")
         except sqlite3.Error:
             pass  # table may not exist yet on first run
+
+        # Migrate devices: remove vendor CHECK constraint if present
+        try:
+            # Check if the table has a CHECK constraint by trying to insert a non-standard vendor
+            conn.execute("INSERT INTO devices (project_id, hostname, vendor) VALUES (-999, '__test__', 'RAD')")
+            conn.execute("DELETE FROM devices WHERE hostname = '__test__'")
+        except sqlite3.IntegrityError:
+            # CHECK constraint exists — recreate table without it
+            conn.executescript("""
+                CREATE TABLE devices_new (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    project_id  INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    hostname    TEXT NOT NULL,
+                    vendor      TEXT,
+                    model       TEXT,
+                    mgmt_ip     TEXT,
+                    site        TEXT,
+                    notes       TEXT
+                );
+                INSERT INTO devices_new SELECT * FROM devices;
+                DROP TABLE devices;
+                ALTER TABLE devices_new RENAME TO devices;
+            """)
+            log.info("Migrated devices table: removed vendor CHECK constraint")
+        except sqlite3.Error:
+            pass
+
     except sqlite3.Error as exc:
         log.error("Failed to initialize database: %s", exc, exc_info=True)
         raise

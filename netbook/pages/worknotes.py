@@ -262,8 +262,11 @@ def _section_devices(project_id: int) -> None:
                     row_key="id",
                 )
                 .classes("w-full rounded-lg")
-                .style(f"background:{PANEL_BG}; border:1px solid {BORDER};")
-                .props("flat bordered dense")
+                .style(
+                    f"background:{PANEL_BG}; border:1px solid {BORDER};"
+                    f" --q-table-header-padding:12px 16px; --q-table-body-padding:10px 16px;"
+                )
+                .props("flat bordered separator=cell")
             )
 
             # Add delete button per row via slot
@@ -333,7 +336,151 @@ def _section_devices(project_id: int) -> None:
         notes_in.value = ""
         add_dlg.open()
 
-    _add_button("Add Device", open_add_device)
+    # ── Upload Excel button ───────────────────────────────────────────────────
+    upload_widget = None
+
+    async def handle_upload(e) -> None:
+        """Parse uploaded Excel file and import devices."""
+        import openpyxl
+        from io import BytesIO
+
+        try:
+            # NiceGUI 3.5: e.file is a SmallFileUpload with async .read()
+            file_obj = e.file
+            if hasattr(file_obj, 'read'):
+                file_content = await file_obj.read()
+            elif hasattr(file_obj, 'content'):
+                content = file_obj.content
+                file_content = await content.read() if hasattr(content, 'read') else content
+            else:
+                ui.notify(f"File attrs: {[a for a in dir(file_obj) if not a.startswith('_')]}", color="warning")
+                return
+            wb = openpyxl.load_workbook(BytesIO(file_content), read_only=True, data_only=True)
+        except Exception as exc:
+            ui.notify(f"Failed to read Excel file: {exc}", color="negative")
+            return
+
+        added = 0
+        skipped = 0
+        seen_hostnames: set[str] = set()
+
+        # Also check existing devices to avoid duplicates
+        existing_devices = db.get_devices(project_id)
+        for d in existing_devices:
+            seen_hostnames.add(d["hostname"].strip().upper())
+
+        for sheet_name in wb.sheetnames:
+            # Skip Summary tab
+            if sheet_name.lower() == "summary":
+                continue
+
+            ws = wb[sheet_name]
+            rows = list(ws.iter_rows(values_only=True))
+            if not rows:
+                continue
+
+            # Find header row containing our target columns
+            header_row = None
+            header_idx = -1
+            for i, row in enumerate(rows):
+                row_lower = [str(c).strip().lower() if c else "" for c in row]
+                if "tid" in row_lower and "management ip" in row_lower:
+                    header_row = row_lower
+                    header_idx = i
+                    break
+
+            if header_row is None:
+                continue
+
+            # Map column indices
+            col_map: dict[str, int] = {}
+            for ci, val in enumerate(header_row):
+                if val == "tid":
+                    col_map["hostname"] = ci
+                elif val == "management ip":
+                    col_map["mgmt_ip"] = ci
+                elif val == "vendor":
+                    col_map["vendor"] = ci
+                elif val == "model":
+                    col_map["model"] = ci
+
+            if "hostname" not in col_map:
+                continue
+
+            # Parse data rows
+            for row in rows[header_idx + 1:]:
+                if not row or all(c is None for c in row):
+                    continue
+                hostname = str(row[col_map["hostname"]] or "").strip()
+                if not hostname or hostname.upper() in seen_hostnames:
+                    skipped += 1
+                    continue
+                seen_hostnames.add(hostname.upper())
+
+                mgmt_ip = str(row[col_map.get("mgmt_ip", 0)] or "").strip() if "mgmt_ip" in col_map else ""
+                vendor = str(row[col_map.get("vendor", 0)] or "").strip() if "vendor" in col_map else ""
+                model = str(row[col_map.get("model", 0)] or "").strip() if "model" in col_map else ""
+
+                db.create_device(
+                    project_id,
+                    hostname,
+                    vendor=vendor or "Other",
+                    model=model,
+                    mgmt_ip=mgmt_ip,
+                )
+                added += 1
+
+        wb.close()
+        # Clear the upload widget
+        if upload_widget:
+            upload_widget.reset()
+        ui.notify(f"Imported {added} devices ({skipped} skipped/duplicates)", color="positive")
+        refresh()
+
+    # ── Action buttons row ────────────────────────────────────────────────────
+    with ui.row().classes("items-center gap-4 mt-4 mb-6"):
+        ui.button("+ ADD DEVICE", on_click=open_add_device).classes(
+            "font-semibold rounded-md cursor-pointer add-device-btn"
+        ).style(
+            f"background:transparent; color:{ACCENT}; border:2px solid {ACCENT};"
+            f"padding:8px 20px;"
+        )
+
+        def do_delete_all() -> None:
+            devices = db.get_devices(project_id)
+            for d in devices:
+                db.delete_device(d["id"])
+            ui.notify(f"Deleted {len(devices)} devices", color="warning")
+            refresh()
+
+        ui.button("DELETE ALL", icon="delete_sweep", on_click=lambda: _confirm_delete(
+            "Delete ALL devices? This cannot be undone.", do_delete_all
+        )).classes("font-semibold rounded-md cursor-pointer delete-all-btn").style(
+            "background:transparent; color:#c62828; border:2px solid #c62828;"
+            "padding:8px 18px;"
+        )
+
+    # Upload Excel widget
+    upload_widget = ui.upload(
+        label="Upload Excel",
+        on_upload=handle_upload,
+        auto_upload=True,
+    ).props("accept=.xlsx,.xls").classes("mb-4").style("max-width:250px;")
+
+    # Hover styles for buttons
+    ui.add_css("""
+        .add-device-btn:hover {
+            background-color: #2e7d32 !important;
+            color: #ffffff !important;
+            border-color: #2e7d32 !important;
+        }
+        .delete-all-btn:hover {
+            background-color: #c62828 !important;
+            color: #ffffff !important;
+            border-color: #c62828 !important;
+        }
+    """)
+
     refresh()
 
 
