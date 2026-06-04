@@ -1064,10 +1064,49 @@ def _section_circuits(project_id: int) -> None:
                         existing_hostnames.add(tid.lower())
                         imported_count += 1
 
+                    # Auto-create A-Z path with hops from the servers
+                    if servers:
+                        # Get the circuit ID we just created
+                        all_circuits = db.get_circuits(project_id)
+                        circuit_db_id = None
+                        for c in all_circuits:
+                            if c["cid"] == cid_val:
+                                circuit_db_id = c["id"]
+                                break
+
+                        # Get all devices for device_id lookup
+                        all_devices = db.get_devices(project_id)
+                        device_lookup = {d["hostname"].lower(): d["id"] for d in all_devices}
+
+                        # Create path
+                        first_tid = servers[0].get("tid") or "A"
+                        last_tid = servers[-1].get("tid") or "Z"
+                        path_id = db.create_path(
+                            project_id,
+                            name=f"Path: {cid_val}",
+                            a_side=first_tid,
+                            z_side=last_tid,
+                            status="active",
+                            notes=f"Auto-created from Granite lookup",
+                        )
+
+                        if path_id:
+                            for hop_order, srv in enumerate(servers, 1):
+                                tid = srv.get("tid") or ""
+                                device_id = device_lookup.get(tid.lower())
+                                db.add_path_hop(
+                                    path_id,
+                                    hop_order=hop_order,
+                                    hop_type="device",
+                                    device_id=device_id,
+                                    ingress_iface=srv.get("port_access_id") or "",
+                                    circuit_id=circuit_db_id,
+                                )
+
                     fetch_dlg.close()
                     refresh()
                     ui.notify(
-                        f"Added circuit {cid_val}, imported {imported_count} device(s)",
+                        f"Added circuit {cid_val}, imported {imported_count} device(s), path created",
                         color="positive",
                     )
 
@@ -1220,6 +1259,42 @@ def _section_circuits(project_id: int) -> None:
                 )
                 existing_hostnames.add(tid.lower())
                 devices_added += 1
+
+            # Auto-create A-Z path with hops from the servers
+            if servers:
+                all_circuits = db.get_circuits(project_id)
+                circuit_db_id = None
+                for c in all_circuits:
+                    if c["cid"] == cid_val:
+                        circuit_db_id = c["id"]
+                        break
+
+                all_devices = db.get_devices(project_id)
+                device_lookup = {d["hostname"].lower(): d["id"] for d in all_devices}
+
+                first_tid = servers[0].get("tid") or "A"
+                last_tid = servers[-1].get("tid") or "Z"
+                path_id = db.create_path(
+                    project_id,
+                    name=f"Path: {cid_val}",
+                    a_side=first_tid,
+                    z_side=last_tid,
+                    status="active",
+                    notes="Auto-created from Granite lookup",
+                )
+
+                if path_id:
+                    for hop_order, srv in enumerate(servers, 1):
+                        tid = srv.get("tid") or ""
+                        device_id = device_lookup.get(tid.lower())
+                        db.add_path_hop(
+                            path_id,
+                            hop_order=hop_order,
+                            hop_type="device",
+                            device_id=device_id,
+                            ingress_iface=srv.get("port_access_id") or "",
+                            circuit_id=circuit_db_id,
+                        )
 
             # Delay between API calls
             import asyncio
@@ -1422,114 +1497,117 @@ def _section_paths(project_id: int) -> None:
 def _path_card(
     path: sqlite3.Row, project_id: int, refresh_cb: Callable[[], None]
 ) -> None:
-    """Render a path card with hop chain and add-hop controls."""
+    """Render a path card with collapsible hop chain and add-hop controls."""
     hops = db.get_path_hops(path["id"])
     sc = STATUS_COLORS.get((path["status"] or "active").lower(), TEXT_MUTED)
 
-    with ui.element("div").classes("rounded-lg p-5").style(
+    # Build the header label
+    header_text = path["name"]
+    if path["a_side"] and path["z_side"]:
+        header_text += f"  ({path['a_side']} → {path['z_side']})"
+
+    with ui.element("div").classes("rounded-lg").style(
         f"background:{PANEL_BG}; border:1px solid {BORDER};"
     ):
-        with ui.row().classes("items-start justify-between mb-4"):
-            with ui.column().classes("gap-1"):
-                ui.label(path["name"]).classes("text-[15px] font-semibold").style(
-                    f"color:{TEXT_PRI};"
-                )
-                if path["customer"]:
-                    ui.label(path["customer"]).classes("text-[12px]").style(
-                        f"color:{TEXT_MUTED};"
-                    )
-            with ui.row().classes("items-center gap-1.5"):
+        # Collapsible expansion panel
+        with ui.expansion(header_text).classes("w-full").style(
+            f"font-size:15px; font-weight:600; color:{TEXT_PRI};"
+        ):
+            # Status + delete row
+            with ui.row().classes("items-center gap-2 mb-3"):
                 ui.element("span").style(
                     f"width:7px;height:7px;border-radius:50%;background:{sc};display:inline-block;"
                 )
                 ui.label(path["status"] or "active").classes("text-[12px]").style(
                     f"color:{sc};"
                 )
-                ui.icon("delete_outline").classes(
-                    "text-[16px] cursor-pointer ml-2"
-                ).style(f"color:{TEXT_MUTED};").on(
-                    "click",
-                    lambda pid=path["id"]: _confirm_delete(
-                        f"Delete path '{path['name']}'?",
-                        lambda: (db.delete_path(pid), refresh_cb()),
-                    ),
+                if path["customer"]:
+                    ui.label(f"Customer: {path['customer']}").classes("text-[12px] ml-3").style(
+                        f"color:{TEXT_MUTED};"
+                    )
+                ui.element("div").classes("flex-1")
+                ui.button("DELETE", on_click=lambda pid=path["id"]: _confirm_delete(
+                    f"Delete path '{path['name']}'?",
+                    lambda: (db.delete_path(pid), refresh_cb()),
+                )).classes("font-semibold rounded-md cursor-pointer").props(
+                    "color=red-7 no-caps dense"
+                ).style("padding:4px 12px; font-size:11px;")
+
+            # A-side / Z-side labels
+            with ui.row().classes("gap-2 items-center mb-3.5"):
+                if path["a_side"]:
+                    ui.label(f"A: {path['a_side']}").classes("text-[12px] rounded").style(
+                        f"color:{ACCENT}; background:{ACCENT}12;"
+                        f"padding:3px 10px; border:1px solid {ACCENT}33;"
+                    )
+                ui.icon("arrow_forward").classes("text-[14px]").style(
+                    f"color:{TEXT_MUTED};"
                 )
+                if path["z_side"]:
+                    ui.label(f"Z: {path['z_side']}").classes("text-[12px] rounded").style(
+                        f"color:#52a0c9; background:#52a0c912;"
+                        f"padding:3px 10px; border:1px solid #52a0c933;"
+                    )
 
-        # A-side / Z-side labels
-        with ui.row().classes("gap-2 items-center mb-3.5"):
-            if path["a_side"]:
-                ui.label(f"A: {path['a_side']}").classes("text-[12px] rounded").style(
-                    f"color:{ACCENT}; background:{ACCENT}12;"
-                    f"padding:3px 10px; border:1px solid {ACCENT}33;"
+            # Hop chain
+            hop_col = ui.column().classes("gap-0")
+            with hop_col:
+                _render_hops(hops, hop_col)
+
+            # Add hop controls
+            with ui.expansion("Add Hop").classes(
+                "mt-2.5 rounded-md"
+            ).style(f"background:#f8f9fb; border:1px solid {BORDER};"):
+                hop_type_sel = (
+                    ui.select(["device", "carrier"], label="Hop Type", value="device")
+                    .props("outlined")
+                    .classes("w-full")
                 )
-            ui.icon("arrow_forward").classes("text-[14px]").style(
-                f"color:{TEXT_MUTED};"
-            )
-            if path["z_side"]:
-                ui.label(f"Z: {path['z_side']}").classes("text-[12px] rounded").style(
-                    f"color:#52a0c9; background:#52a0c912;"
-                    f"padding:3px 10px; border:1px solid #52a0c933;"
+                devices = db.get_devices(project_id)
+                device_names = {d["hostname"]: d["id"] for d in devices}
+                dev_sel = ui.select(
+                    list(device_names.keys()) or ["(no devices)"], label="Device"
+                ).classes("w-full mt-2.5")
+                ing_in = (
+                    ui.input("Ingress Interface").props("outlined").classes("w-full mt-2.5")
                 )
-
-        # Hop chain
-        hop_col = ui.column().classes("gap-0")
-        with hop_col:
-            _render_hops(hops, hop_col)
-
-        # Add hop controls
-        with ui.expansion("Add Hop", icon="add_circle_outline").classes(
-            "mt-2.5 rounded-md"
-        ).style(f"background:#f8f9fb; border:1px solid {BORDER};"):
-            hop_type_sel = (
-                ui.select(["device", "carrier"], label="Hop Type", value="device")
-                .props("outlined")
-                .classes("w-full")
-            )
-            devices = db.get_devices(project_id)
-            device_names = {d["hostname"]: d["id"] for d in devices}
-            dev_sel = ui.select(
-                list(device_names.keys()) or ["(no devices)"], label="Device"
-            ).classes("w-full mt-2.5")
-            ing_in = (
-                ui.input("Ingress Interface").props("outlined").classes("w-full mt-2.5")
-            )
-            egr_in = (
-                ui.input("Egress Interface").props("outlined").classes("w-full mt-2.5")
-            )
-            carr_lbl_in = (
-                ui.input("Carrier Label").props("outlined").classes("w-full mt-2.5")
-            )
-            circuits = db.get_circuits(project_id)
-            ckt_names = {"(none)": None} | {c["cid"]: c["id"] for c in circuits}
-            ckt_sel = ui.select(
-                list(ckt_names.keys()), label="Circuit ID (optional)", value="(none)"
-            ).classes("w-full mt-2.5")
-            hop_notes = ui.input("Notes").props("outlined").classes("w-full mt-2.5")
-
-            def do_add_hop(path_id: int = path["id"]) -> None:
-                next_order = len(db.get_path_hops(path_id)) + 1
-                ht = hop_type_sel.value
-                did = device_names.get(dev_sel.value) if ht == "device" else None
-                cid = ckt_names.get(ckt_sel.value)
-                db.add_path_hop(
-                    path_id,
-                    next_order,
-                    ht,
-                    device_id=did,
-                    ingress_iface=ing_in.value,
-                    egress_iface=egr_in.value,
-                    carrier_label=carr_lbl_in.value,
-                    circuit_id=cid,
-                    notes=hop_notes.value,
+                egr_in = (
+                    ui.input("Egress Interface").props("outlined").classes("w-full mt-2.5")
                 )
-                hop_col.clear()
-                with hop_col:
-                    _render_hops(db.get_path_hops(path_id), hop_col)
-                ui.notify("Hop added", color="positive")
+                carr_lbl_in = (
+                    ui.input("Carrier Label").props("outlined").classes("w-full mt-2.5")
+                )
+                circuits = db.get_circuits(project_id)
+                ckt_names = {"(none)": None} | {c["cid"]: c["id"] for c in circuits}
+                ckt_sel = ui.select(
+                    list(ckt_names.keys()), label="Circuit ID (optional)", value="(none)"
+                ).classes("w-full mt-2.5")
+                hop_notes = ui.input("Notes").props("outlined").classes("w-full mt-2.5")
 
-            ui.button("Add Hop", on_click=do_add_hop).classes(
-                "font-semibold rounded-md cursor-pointer"
-            ).props("color=green-7 no-caps").style("padding:10px 22px;")
+                def do_add_hop(path_id: int = path["id"]) -> None:
+                    next_order = len(db.get_path_hops(path_id)) + 1
+                    ht = hop_type_sel.value
+                    did = device_names.get(dev_sel.value) if ht == "device" else None
+                    cid = ckt_names.get(ckt_sel.value)
+                    db.add_path_hop(
+                        path_id,
+                        next_order,
+                        ht,
+                        device_id=did,
+                        ingress_iface=ing_in.value,
+                        egress_iface=egr_in.value,
+                        carrier_label=carr_lbl_in.value,
+                        circuit_id=cid,
+                        notes=hop_notes.value,
+                    )
+                    hop_col.clear()
+                    with hop_col:
+                        _render_hops(db.get_path_hops(path_id), hop_col)
+                    ui.notify("Hop added", color="positive")
+
+                ui.button("Add Hop", on_click=do_add_hop).classes(
+                    "font-semibold rounded-md cursor-pointer"
+                ).props("color=green-7 no-caps").style("padding:10px 22px;")
 
 
 def _render_hops(hops: list[sqlite3.Row], hop_col) -> None:

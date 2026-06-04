@@ -23,3 +23,6 @@ Thumbs.db
 # Excel files
 *.xlsx
 *.xls
+
+# Sensitive API config
+granite.py
