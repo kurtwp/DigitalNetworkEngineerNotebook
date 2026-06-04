@@ -25,7 +25,10 @@ from netbook.theme import (
     CISCO,
     STATUS_COLORS,
 )
+import requests
+
 import netbook.database as db
+import granite
 
 log = logging.getLogger(__name__)
 
@@ -894,7 +897,39 @@ def _section_circuits(project_id: int) -> None:
         ui.label("Add Circuit").classes("text-[17px] font-semibold mb-[18px]").style(
             f"color:{TEXT_PRI};"
         )
-        cid_in = ui.input("Circuit ID *").props("outlined").classes("w-full")
+        with ui.row().classes("w-full items-center gap-2"):
+            cid_in = ui.input("Circuit ID *").props("outlined").classes("flex-grow")
+
+            def _lookup_cid() -> None:
+                """Fetch circuit data from Granite and pre-fill fields."""
+                cid_val = cid_in.value.strip()
+                if not cid_val:
+                    ui.notify("Enter a Circuit ID first", color="negative")
+                    return
+                try:
+                    result = granite.fetch_server_data(cid_val)
+                    bw_in.value = result.get("bandwidth", "") or ""
+                    stat_in.value = (result.get("status", "") or "").lower() or "active"
+                    server_count = len(result.get("servers", []))
+                    ui.notify(
+                        f"Granite: {result.get('status', 'Unknown')} — "
+                        f"{result.get('bandwidth', 'Unknown')} — "
+                        f"{server_count} server(s)",
+                        color="positive",
+                    )
+                except requests.RequestException as exc:
+                    ui.notify(
+                        f"Granite lookup failed: {exc}", color="negative"
+                    )
+                except ValueError as exc:
+                    ui.notify(
+                        f"Invalid response from Granite: {exc}", color="negative"
+                    )
+
+            ui.button("Lookup CID", on_click=_lookup_cid).classes(
+                "font-semibold rounded-md cursor-pointer"
+            ).props("color=green-7 no-caps").style("padding:10px 22px;")
+
         carr_in = (
             ui.input("Carrier / Provider").props("outlined").classes("w-full mt-2.5")
         )
@@ -963,7 +998,248 @@ def _section_circuits(project_id: int) -> None:
         notes_in.value = ""
         add_dlg.open()
 
-    _add_button("Add Circuit", open_add_circuit)
+    def _open_granite_fetch_dlg() -> None:
+        """Open a dialog to fetch a full circuit + devices from Granite by CID."""
+        with ui.dialog() as fetch_dlg, ui.card().classes(
+            "rounded-[10px] p-[26px] min-w-[420px]"
+        ).style(f"background:{PANEL_BG}; border:1px solid {BORDER};"):
+            ui.label("Fetch from Granite").classes(
+                "text-[17px] font-semibold mb-[18px]"
+            ).style(f"color:{TEXT_PRI};")
+            granite_cid_in = ui.input("Circuit ID *").props("outlined").classes("w-full")
+
+            with ui.row().classes("mt-[22px] gap-2.5 justify-end"):
+                ui.button("Cancel", on_click=fetch_dlg.close).classes(
+                    "font-semibold rounded-md cursor-pointer"
+                ).props("color=amber-8 no-caps").style("padding:10px 22px;")
+
+                def _do_granite_fetch() -> None:
+                    """Query Granite, create circuit, and import servers as devices."""
+                    cid_val = granite_cid_in.value.strip()
+                    if not cid_val:
+                        ui.notify("Circuit ID required", color="negative")
+                        return
+                    try:
+                        result = granite.fetch_server_data(cid_val)
+                    except requests.RequestException as exc:
+                        ui.notify(
+                            f"Granite API error: {exc}", color="negative"
+                        )
+                        return
+                    except ValueError as exc:
+                        ui.notify(
+                            f"Invalid Granite response: {exc}", color="negative"
+                        )
+                        return
+
+                    # Create the circuit
+                    bandwidth = result.get("bandwidth", "") or ""
+                    status = (result.get("status", "") or "").lower() or "active"
+                    db.create_circuit(
+                        project_id,
+                        cid_val,
+                        bandwidth=bandwidth,
+                        status=status,
+                    )
+
+                    # Import servers as devices, deduplicating by hostname (TID)
+                    existing_devices = db.get_devices(project_id)
+                    existing_hostnames = {
+                        d["hostname"].lower() for d in existing_devices if d["hostname"]
+                    }
+                    servers = result.get("servers", [])
+                    imported_count = 0
+                    for srv in servers:
+                        tid = srv.get("tid") or ""
+                        if not tid or tid.lower() in existing_hostnames:
+                            continue
+                        db.create_device(
+                            project_id,
+                            hostname=tid,
+                            vendor=srv.get("vendor") or "",
+                            model=srv.get("model") or "",
+                            mgmt_ip=srv.get("management_ip") or "",
+                            notes=f"Imported from Granite CID {cid_val}",
+                        )
+                        existing_hostnames.add(tid.lower())
+                        imported_count += 1
+
+                    fetch_dlg.close()
+                    refresh()
+                    ui.notify(
+                        f"Added circuit {cid_val}, imported {imported_count} device(s)",
+                        color="positive",
+                    )
+
+                ui.button("Fetch", on_click=_do_granite_fetch).classes(
+                    "font-semibold rounded-md cursor-pointer"
+                ).props("color=green-7 no-caps").style("padding:10px 22px;")
+        fetch_dlg.open()
+
+    with ui.row().classes("gap-2.5 items-center mb-4"):
+        ui.button("Add Circuit", on_click=open_add_circuit).classes(
+            "font-semibold rounded-md cursor-pointer"
+        ).props("color=green-7 no-caps").style("padding:10px 22px;")
+        ui.button("Fetch from Granite", on_click=_open_granite_fetch_dlg).classes(
+            "font-semibold rounded-md cursor-pointer"
+        ).props("color=green-7 no-caps").style("padding:10px 22px;")
+
+        def do_delete_all_circuits() -> None:
+            circuits = db.get_circuits(project_id)
+            for c in circuits:
+                db.delete_circuit(c["id"])
+            ui.notify(f"Deleted {len(circuits)} circuits", color="warning")
+            refresh()
+
+        ui.button("DELETE ALL", on_click=lambda: _confirm_delete(
+            "Delete ALL circuits? This cannot be undone.", do_delete_all_circuits
+        )).classes("font-semibold rounded-md cursor-pointer").props("color=red-7 no-caps").style("padding:10px 22px;")
+
+    # ── Upload CIDs file ──────────────────────────────────────────────────────
+    async def handle_cid_upload(e) -> None:
+        """Parse uploaded file of CIDs and fetch each from Granite."""
+        try:
+            file_obj = e.file
+            if hasattr(file_obj, 'read'):
+                file_content = await file_obj.read()
+            else:
+                ui.notify("Could not read file", color="negative")
+                return
+        except Exception as exc:
+            ui.notify(f"Failed to read file: {exc}", color="negative")
+            return
+
+        # Determine file type and extract CIDs
+        filename = getattr(file_obj, 'filename', '') or getattr(e, 'name', '') or ''
+        cids: list[str] = []
+
+        # Check if content looks like an Excel file (ZIP magic bytes: PK)
+        is_excel = filename.lower().endswith(('.xlsx', '.xls')) or file_content[:2] == b'PK'
+
+        if is_excel:
+            # Excel file — find "CID" column header and pull values from that column
+            import openpyxl
+            from io import BytesIO
+            try:
+                wb = openpyxl.load_workbook(BytesIO(file_content), read_only=True, data_only=True)
+                for sheet_name in wb.sheetnames:
+                    ws = wb[sheet_name]
+                    rows = list(ws.iter_rows(values_only=True))
+                    if not rows:
+                        continue
+
+                    # Find header row with "CID" column
+                    cid_col_idx = -1
+                    header_idx = -1
+                    for i, row in enumerate(rows):
+                        for ci, cell in enumerate(row):
+                            if cell and str(cell).strip().lower() in ("cid", "circuit id", "circuit_id"):
+                                cid_col_idx = ci
+                                header_idx = i
+                                break
+                        if cid_col_idx >= 0:
+                            break
+
+                    if cid_col_idx < 0:
+                        continue
+
+                    # Pull CID values from that column (deduplicate within file)
+                    seen_in_file: set[str] = set()
+                    for row in rows[header_idx + 1:]:
+                        if not row or cid_col_idx >= len(row):
+                            continue
+                        val = row[cid_col_idx]
+                        if val and str(val).strip():
+                            cid_str = str(val).strip()
+                            if cid_str.lower() not in seen_in_file:
+                                seen_in_file.add(cid_str.lower())
+                                cids.append(cid_str)
+                    # Stop after finding the first sheet with a CID column
+                    break
+                wb.close()
+            except Exception as exc:
+                ui.notify(f"Failed to parse Excel: {exc}", color="negative")
+                return
+        else:
+            # Text/CSV file — one CID per line
+            text = file_content.decode("utf-8", errors="ignore")
+            lines = [line.strip() for line in text.splitlines()]
+            cids = [l for l in lines if l and not l.lower().startswith("cid") and not l.startswith("#")
+                    and all(32 <= ord(c) < 127 for c in l)]
+
+        if not cids:
+            ui.notify("No CIDs found in file", color="warning")
+            return
+
+        log.info("CID upload: found %d unique CID(s): %s", len(cids), cids)
+
+        # Get existing devices and circuits for deduplication
+        existing_devices = db.get_devices(project_id)
+        existing_hostnames = {d["hostname"].lower() for d in existing_devices if d["hostname"]}
+        existing_circuits = db.get_circuits(project_id)
+        existing_cids = {c["cid"].lower() for c in existing_circuits if c["cid"]}
+
+        circuits_added = 0
+        devices_added = 0
+        errors = 0
+
+        for cid_val in cids:
+            if cid_val.lower() in existing_cids:
+                continue
+
+            # Always create the circuit first
+            bandwidth = ""
+            status = "active"
+            servers: list = []
+
+            try:
+                result = granite.fetch_server_data(cid_val)
+                bandwidth = result.get("bandwidth", "") or ""
+                status = (result.get("status", "") or "").lower() or "active"
+                servers = result.get("servers", [])
+            except Exception as exc:
+                log.warning("Granite lookup failed for %s: %s", cid_val, exc)
+                errors += 1
+
+            db.create_circuit(project_id, cid_val, bandwidth=bandwidth, status=status)
+            existing_cids.add(cid_val.lower())
+            circuits_added += 1
+
+            # Import servers as devices
+            for srv in servers:
+                tid = srv.get("tid") or ""
+                if not tid or tid.lower() in existing_hostnames:
+                    continue
+                db.create_device(
+                    project_id,
+                    hostname=tid,
+                    vendor=srv.get("vendor") or "",
+                    model=srv.get("model") or "",
+                    mgmt_ip=srv.get("management_ip") or "",
+                    notes=f"Imported from Granite CID {cid_val}",
+                )
+                existing_hostnames.add(tid.lower())
+                devices_added += 1
+
+            # Delay between API calls
+            import asyncio
+            await asyncio.sleep(2)
+
+        if cid_upload_widget:
+            cid_upload_widget.reset()
+        msg = f"Added {circuits_added} circuit(s), {devices_added} device(s)"
+        if errors:
+            msg += f" ({errors} lookup error(s))"
+        ui.notify(msg, color="positive")
+        refresh()
+
+    ui.element("div").style("height:16px;")
+    cid_upload_widget = ui.upload(
+        label="Upload CIDs File",
+        on_upload=handle_cid_upload,
+        auto_upload=True,
+    ).props("accept=.txt,.csv,.xlsx,.xls").style("max-width:250px;")
+
     refresh()
 
 
