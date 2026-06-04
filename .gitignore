@@ -19,3 +19,7 @@ Thumbs.db
 
 # Environment secrets
 .env
+
+# Excel files
+*.xlsx
+*.xls
