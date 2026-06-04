@@ -207,11 +207,8 @@ def _section_devices(project_id: int) -> None:
 
             with ui.row().classes("gap-2.5 items-center mb-2"):
                 ui.button(
-                    "Download CSV", icon="download", on_click=download_devices_csv
-                ).classes("text-[12px] rounded-[5px] cursor-pointer").style(
-                    f"background:{ACCENT}15; color:{ACCENT}; border:1px solid {ACCENT}33;"
-                    f"padding:6px 14px;"
-                )
+                    "DOWNLOAD CSV", on_click=download_devices_csv
+                ).classes("font-semibold rounded-md cursor-pointer").props("color=blue-7 no-caps").style("padding:10px 22px;")
                 ui.label(
                     f"{len(devices)} device{'s' if len(devices) != 1 else ''}"
                 ).classes("text-[12px]").style(f"color:{TEXT_MUTED};")
@@ -252,6 +249,7 @@ def _section_devices(project_id: int) -> None:
                         "model": d["model"] or "",
                         "mgmt_ip": d["mgmt_ip"] or "",
                         "site": d["site"] or "",
+                        "notes": d["notes"] or "",
                     }
                 )
 
@@ -269,11 +267,13 @@ def _section_devices(project_id: int) -> None:
                 .props("flat bordered separator=cell")
             )
 
-            # Add delete button per row via slot
+            # Add edit/delete buttons per row via slot
             table.add_slot(
                 "body-cell-actions",
                 """
                 <q-td :props="props">
+                    <q-btn flat dense icon="edit" size="sm" color="green"
+                           @click="$parent.$emit('edit-notes', props.row)" />
                     <q-btn flat dense icon="delete_outline" size="sm" color="grey"
                            @click="$parent.$emit('delete', props.row)" />
                 </q-td>
@@ -286,6 +286,40 @@ def _section_devices(project_id: int) -> None:
                     lambda did=e.args["id"]: (db.delete_device(did), refresh()),
                 ),
             )
+
+            def open_notes_editor(e) -> None:
+                device_id = e.args["id"]
+                hostname = e.args["hostname"]
+                current_notes = e.args.get("notes", "")
+                with ui.dialog() as notes_dlg, ui.card().classes(
+                    "rounded-[10px] p-[26px] min-w-[500px]"
+                ).style(f"background:{PANEL_BG}; border:1px solid {BORDER};"):
+                    ui.label(f"Notes — {hostname}").classes(
+                        "text-[17px] font-semibold mb-[18px]"
+                    ).style(f"color:{TEXT_PRI};")
+                    notes_input = (
+                        ui.textarea("Notes", value=current_notes)
+                        .props('outlined input-style="height:200px; overflow-y:auto;"')
+                        .classes("w-full font-mono text-[13px]")
+                        .style("width:100%;")
+                    )
+                    with ui.row().classes("mt-4 gap-3 justify-end"):
+                        ui.button("Cancel", on_click=notes_dlg.close).classes(
+                            "font-semibold rounded-md cursor-pointer"
+                        ).props("color=amber-8 no-caps").style("padding:10px 22px;")
+
+                        def save_notes(did=device_id) -> None:
+                            db.update_device(did, notes=notes_input.value.strip())
+                            notes_dlg.close()
+                            ui.notify("Notes saved", color="positive")
+                            refresh()
+
+                        ui.button("Save", on_click=save_notes).classes(
+                            "font-semibold rounded-md cursor-pointer"
+                        ).props("color=green-7 no-caps").style("padding:10px 22px;")
+                notes_dlg.open()
+
+            table.on("edit-notes", open_notes_editor)
 
     # Add device dialog
     with ui.dialog() as add_dlg, ui.card().classes(
@@ -306,7 +340,9 @@ def _section_devices(project_id: int) -> None:
         notes_in = ui.textarea("Notes").props("outlined").classes("w-full mt-2.5")
 
         with ui.row().classes("mt-[22px] gap-2.5 justify-end"):
-            ui.button("Cancel", on_click=add_dlg.close).style(_cancel_style())
+            ui.button("Cancel", on_click=add_dlg.close).classes(
+                "font-semibold rounded-md cursor-pointer"
+            ).props("color=amber-8 no-caps").style("padding:10px 22px;")
 
             def do_add() -> None:
                 if not hostname_in.value.strip():
@@ -325,7 +361,9 @@ def _section_devices(project_id: int) -> None:
                 refresh()
                 ui.notify("Device added", color="positive")
 
-            ui.button("Add Device", on_click=do_add).style(_primary_btn_style())
+            ui.button("Add Device", on_click=do_add).classes(
+                "font-semibold rounded-md cursor-pointer"
+            ).props("color=green-7 no-caps").style("padding:10px 22px;")
 
     def open_add_device() -> None:
         hostname_in.value = ""
@@ -438,13 +476,12 @@ def _section_devices(project_id: int) -> None:
         refresh()
 
     # ── Action buttons row ────────────────────────────────────────────────────
-    with ui.row().classes("items-center gap-4 mt-4 mb-6"):
-        ui.button("+ ADD DEVICE", on_click=open_add_device).classes(
-            "font-semibold rounded-md cursor-pointer add-device-btn"
-        ).style(
-            f"background:transparent; color:{ACCENT}; border:2px solid {ACCENT};"
-            f"padding:8px 20px;"
-        )
+    ui.element("div").style("height:24px;")  # spacer after table/content_col
+
+    with ui.row().classes("items-center gap-4"):
+        ui.button("ADD DEVICE", on_click=open_add_device).classes(
+            "font-semibold rounded-md cursor-pointer"
+        ).props("color=green-7 no-caps").style("padding:10px 22px;")
 
         def do_delete_all() -> None:
             devices = db.get_devices(project_id)
@@ -453,31 +490,29 @@ def _section_devices(project_id: int) -> None:
             ui.notify(f"Deleted {len(devices)} devices", color="warning")
             refresh()
 
-        ui.button("DELETE ALL", icon="delete_sweep", on_click=lambda: _confirm_delete(
+        ui.button("DELETE ALL", on_click=lambda: _confirm_delete(
             "Delete ALL devices? This cannot be undone.", do_delete_all
-        )).classes("font-semibold rounded-md cursor-pointer delete-all-btn").style(
-            "background:transparent; color:#c62828; border:2px solid #c62828;"
-            "padding:8px 18px;"
-        )
+        )).classes("font-semibold rounded-md cursor-pointer").props("color=red-7 no-caps").style("padding:10px 22px;")
+
+    # Spacer between buttons and upload
+    ui.element("div").style("height:24px;")
 
     # Upload Excel widget
     upload_widget = ui.upload(
         label="Upload Excel",
         on_upload=handle_upload,
         auto_upload=True,
-    ).props("accept=.xlsx,.xls").classes("mb-4").style("max-width:250px;")
+    ).props("accept=.xlsx,.xls").style("max-width:250px;")
 
-    # Hover styles for buttons
+    # More pronounced hover effect on action buttons
     ui.add_css("""
-        .add-device-btn:hover {
-            background-color: #2e7d32 !important;
-            color: #ffffff !important;
-            border-color: #2e7d32 !important;
+        .q-btn.bg-green-7:hover, .q-btn.bg-red-7:hover, .q-btn.bg-amber-8:hover, .q-btn.bg-blue-7:hover {
+            filter: brightness(0.7) !important;
+            transform: scale(1.03);
+            transition: all 0.15s ease;
         }
-        .delete-all-btn:hover {
-            background-color: #c62828 !important;
-            color: #ffffff !important;
-            border-color: #c62828 !important;
+        .q-btn.bg-green-7, .q-btn.bg-red-7, .q-btn.bg-amber-8, .q-btn.bg-blue-7 {
+            transition: all 0.15s ease;
         }
     """)
 
@@ -596,11 +631,8 @@ def _device_card(
                             refresh_ifaces()
 
                         ui.button("+", on_click=add_iface).classes(
-                            "rounded-[5px] font-bold cursor-pointer"
-                        ).style(
-                            f"background:{ACCENT}22; color:{ACCENT}; border:1px solid {ACCENT}44;"
-                            f"padding:6px 12px;"
-                        )
+                            "font-semibold rounded-md cursor-pointer"
+                        ).props("color=green-7 no-caps").style("padding:10px 22px;")
 
             refresh_ifaces()
 
@@ -642,11 +674,8 @@ def _device_card(
                                             f"navigator.clipboard.writeText({json.dumps(c or '')})"
                                         ),
                                     ).classes(
-                                        "text-[11px] rounded cursor-pointer"
-                                    ).style(
-                                        f"background:{ACCENT}15; color:{ACCENT}; border:1px solid {ACCENT}33;"
-                                        f"padding:3px 10px;"
-                                    )
+                                        "font-semibold rounded-md cursor-pointer"
+                                    ).props("color=green-7 no-caps").style("padding:10px 22px;")
                                     ui.icon("delete_outline").classes(
                                         "text-[15px] cursor-pointer"
                                     ).style(f"color:{TEXT_MUTED};").on(
@@ -688,11 +717,8 @@ def _device_card(
                         refresh_snippets()
 
                     ui.button("Add Snippet", on_click=add_snip).classes(
-                        "text-[12px] rounded-[5px] mt-2 cursor-pointer"
-                    ).style(
-                        f"background:{ACCENT}18; color:{ACCENT}; border:1px solid {ACCENT}33;"
-                        f"padding:6px 14px;"
-                    )
+                        "font-semibold rounded-md cursor-pointer"
+                    ).props("color=green-7 no-caps").style("padding:10px 22px;")
 
             refresh_snippets()
 
@@ -738,11 +764,8 @@ def _section_circuits(project_id: int) -> None:
 
             with ui.row().classes("gap-2.5 items-center mb-2"):
                 ui.button(
-                    "Download CSV", icon="download", on_click=download_circuits_csv
-                ).classes("text-[12px] rounded-[5px] cursor-pointer").style(
-                    f"background:{ACCENT}15; color:{ACCENT}; border:1px solid {ACCENT}33;"
-                    f"padding:6px 14px;"
-                )
+                    "DOWNLOAD CSV", on_click=download_circuits_csv
+                ).classes("font-semibold rounded-md cursor-pointer").props("color=blue-7 no-caps").style("padding:10px 22px;")
                 ui.label(
                     f"{len(circuits)} circuit{'s' if len(circuits) != 1 else ''}"
                 ).classes("text-[12px]").style(f"color:{TEXT_MUTED};")
@@ -783,7 +806,6 @@ def _section_circuits(project_id: int) -> None:
                     "align": "left",
                     "sortable": True,
                 },
-                {"name": "notes", "label": "Notes", "field": "notes", "align": "left"},
                 {"name": "actions", "label": "", "field": "actions", "align": "center"},
             ]
             rows_data = []
@@ -808,14 +830,16 @@ def _section_circuits(project_id: int) -> None:
                 )
                 .classes("w-full rounded-lg")
                 .style(f"background:{PANEL_BG}; border:1px solid {BORDER};")
-                .props("flat bordered dense")
+                .props("flat bordered separator=cell")
             )
 
-            # Add delete button per row via slot
+            # Add edit/delete buttons per row via slot
             table.add_slot(
                 "body-cell-actions",
                 """
                 <q-td :props="props">
+                    <q-btn flat dense icon="edit" size="sm" color="green"
+                           @click="$parent.$emit('edit-notes', props.row)" />
                     <q-btn flat dense icon="delete_outline" size="sm" color="grey"
                            @click="$parent.$emit('delete', props.row)" />
                 </q-td>
@@ -828,6 +852,40 @@ def _section_circuits(project_id: int) -> None:
                     lambda cid=e.args["id"]: (db.delete_circuit(cid), refresh()),
                 ),
             )
+
+            def open_circuit_notes(e) -> None:
+                circuit_id = e.args["id"]
+                cid = e.args["cid"]
+                current_notes = e.args.get("notes", "")
+                with ui.dialog() as notes_dlg, ui.card().classes(
+                    "rounded-[10px] p-[26px] min-w-[500px]"
+                ).style(f"background:{PANEL_BG}; border:1px solid {BORDER};"):
+                    ui.label(f"Notes — {cid}").classes(
+                        "text-[17px] font-semibold mb-[18px]"
+                    ).style(f"color:{TEXT_PRI};")
+                    notes_input = (
+                        ui.textarea("Notes", value=current_notes)
+                        .props('outlined input-style="height:200px; overflow-y:auto;"')
+                        .classes("w-full font-mono text-[13px]")
+                        .style("width:100%;")
+                    )
+                    with ui.row().classes("mt-4 gap-3 justify-end"):
+                        ui.button("Cancel", on_click=notes_dlg.close).classes(
+                            "font-semibold rounded-md cursor-pointer"
+                        ).props("color=amber-8 no-caps").style("padding:10px 22px;")
+
+                        def save_notes(cid_id=circuit_id) -> None:
+                            db.update_circuit(cid_id, notes=notes_input.value.strip())
+                            notes_dlg.close()
+                            ui.notify("Notes saved", color="positive")
+                            refresh()
+
+                        ui.button("Save", on_click=save_notes).classes(
+                            "font-semibold rounded-md cursor-pointer"
+                        ).props("color=green-7 no-caps").style("padding:10px 22px;")
+                notes_dlg.open()
+
+            table.on("edit-notes", open_circuit_notes)
 
     # Add circuit dialog
     with ui.dialog() as add_dlg, ui.card().classes(
@@ -871,7 +929,9 @@ def _section_circuits(project_id: int) -> None:
         notes_in = ui.textarea("Notes").props("outlined").classes("w-full mt-2.5")
 
         with ui.row().classes("mt-[22px] gap-2.5 justify-end"):
-            ui.button("Cancel", on_click=add_dlg.close).style(_cancel_style())
+            ui.button("Cancel", on_click=add_dlg.close).classes(
+                "font-semibold rounded-md cursor-pointer"
+            ).props("color=amber-8 no-caps").style("padding:10px 22px;")
 
             def do_add() -> None:
                 if not cid_in.value.strip():
@@ -890,7 +950,9 @@ def _section_circuits(project_id: int) -> None:
                 refresh()
                 ui.notify("Circuit added", color="positive")
 
-            ui.button("Add Circuit", on_click=do_add).style(_primary_btn_style())
+            ui.button("Add Circuit", on_click=do_add).classes(
+                "font-semibold rounded-md cursor-pointer"
+            ).props("color=green-7 no-caps").style("padding:10px 22px;")
 
     def open_add_circuit() -> None:
         cid_in.value = ""
@@ -945,7 +1007,9 @@ def _section_ip_plan(project_id: int) -> None:
         note_in = ui.input("Notes").props("outlined").classes("w-full mt-2.5")
 
         with ui.row().classes("mt-[22px] gap-2.5 justify-end"):
-            ui.button("Cancel", on_click=add_dlg.close).style(_cancel_style())
+            ui.button("Cancel", on_click=add_dlg.close).classes(
+                "font-semibold rounded-md cursor-pointer"
+            ).props("color=amber-8 no-caps").style("padding:10px 22px;")
 
             def do_add() -> None:
                 if not sub_in.value.strip():
@@ -963,7 +1027,9 @@ def _section_ip_plan(project_id: int) -> None:
                 refresh()
                 ui.notify("IP entry added", color="positive")
 
-            ui.button("Add Entry", on_click=do_add).style(_primary_btn_style())
+            ui.button("Add Entry", on_click=do_add).classes(
+                "font-semibold rounded-md cursor-pointer"
+            ).props("color=green-7 no-caps").style("padding:10px 22px;")
 
     def open_add_ip() -> None:
         sub_in.value = ""
@@ -1041,7 +1107,9 @@ def _section_paths(project_id: int) -> None:
         )
 
         with ui.row().classes("mt-[22px] gap-2.5 justify-end"):
-            ui.button("Cancel", on_click=add_dlg.close).style(_cancel_style())
+            ui.button("Cancel", on_click=add_dlg.close).classes(
+                "font-semibold rounded-md cursor-pointer"
+            ).props("color=amber-8 no-caps").style("padding:10px 22px;")
 
             def do_add() -> None:
                 if not name_in.value.strip():
@@ -1059,7 +1127,9 @@ def _section_paths(project_id: int) -> None:
                 refresh()
                 ui.notify("Path created", color="positive")
 
-            ui.button("Create Path", on_click=do_add).style(_primary_btn_style())
+            ui.button("Create Path", on_click=do_add).classes(
+                "font-semibold rounded-md cursor-pointer"
+            ).props("color=green-7 no-caps").style("padding:10px 22px;")
 
     def open_add_path() -> None:
         name_in.value = ""
@@ -1182,11 +1252,8 @@ def _path_card(
                 ui.notify("Hop added", color="positive")
 
             ui.button("Add Hop", on_click=do_add_hop).classes(
-                "text-[12px] rounded-[5px] mt-3 cursor-pointer"
-            ).style(
-                f"background:{ACCENT}18; color:{ACCENT}; border:1px solid {ACCENT}33;"
-                f"padding:6px 14px;"
-            )
+                "font-semibold rounded-md cursor-pointer"
+            ).props("color=green-7 no-caps").style("padding:10px 22px;")
 
 
 def _render_hops(hops: list[sqlite3.Row], hop_col) -> None:
@@ -1340,18 +1407,12 @@ def _section_journal(project_id: int) -> None:
                     inputs["entry"].value = ""
                     ui.notify("Note added — see sidebar", color="positive")
 
-                ui.button("+ ADD", on_click=do_add).classes(
+                ui.button("ADD", on_click=do_add).classes(
                     "font-semibold rounded-md cursor-pointer"
-                ).style(
-                    f"background:{ACCENT}; color:#ffffff;"
-                    f"padding:8px 20px; border:none;"
-                )
+                ).props("color=green-7 no-caps").style("padding:10px 22px;")
                 ui.button(
-                    "EXPORT NOTES", icon="download", on_click=export_journal
-                ).classes("font-semibold rounded-md cursor-pointer").style(
-                    f"background:{ACCENT}; color:#ffffff;"
-                    f"padding:8px 20px; border:none;"
-                )
+                    "EXPORT NOTES", on_click=export_journal
+                ).classes("font-semibold rounded-md cursor-pointer").props("color=blue-7 no-caps").style("padding:10px 22px;")
 
     # ── Title: type a custom title OR select a device/circuit ────────────────
     with ui.row().classes("w-full mb-3 items-center gap-4"):
@@ -1597,34 +1658,25 @@ def _section_journal_entry(
             ui.notify("Entry deleted", color="negative")
             navigate("journal")
 
-        ui.button("SAVE", icon="save", on_click=do_save).classes(
+        ui.button("SAVE", on_click=do_save).classes(
             "font-semibold rounded-md cursor-pointer"
-        ).style(
-            f"background:{ACCENT}; color:#ffffff; padding:8px 22px; border:none;"
-        )
+        ).props("color=green-7 no-caps").style("padding:10px 22px;")
         ui.button(
             "DELETE",
-            icon="delete",
             on_click=lambda: _confirm_delete("Delete this journal entry?", do_delete),
-        ).classes("font-semibold rounded-md cursor-pointer").style(
-            "background:#c62828; color:#ffffff; padding:8px 18px; border:none;"
-        )
-        ui.button("CANCEL", icon="close", on_click=lambda: navigate("journal")).classes(
+        ).classes("font-semibold rounded-md cursor-pointer").props("color=red-7 no-caps").style("padding:10px 22px;")
+        ui.button("CANCEL", on_click=lambda: navigate("journal")).classes(
             "font-semibold rounded-md cursor-pointer"
-        ).style(_cancel_style())
+        ).props("color=amber-8 no-caps").style("padding:10px 22px;")
 
         # Copy button (on the right)
         ui.element("div").classes("flex-1")  # spacer
         ui.button(
-            "Copy to clipboard",
-            icon="content_copy",
+            "COPY",
             on_click=lambda: ui.run_javascript(
                 f"navigator.clipboard.writeText({json.dumps(text)})"
             ),
-        ).classes("text-[12px] rounded-[5px] cursor-pointer").style(
-            f"background:{ACCENT}15; color:{ACCENT}; border:1px solid {ACCENT}33;"
-            f"padding:6px 14px;"
-        )
+        ).classes("font-semibold rounded-md cursor-pointer").props("color=green-7 no-caps").style("padding:10px 22px;")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1639,12 +1691,9 @@ def _page_header(icon: str, title: str) -> None:
 
 
 def _add_button(label: str, on_click: Callable[[], None]) -> None:
-    ui.button(f"+ {label}", on_click=on_click).classes(
-        "text-[13px] font-semibold rounded-md cursor-pointer mb-4"
-    ).style(
-        f"background:{ACCENT}18; color:{ACCENT}; border:1px solid {ACCENT}44;"
-        f"padding:8px 18px;"
-    )
+    ui.button(label, on_click=on_click).classes(
+        "font-semibold rounded-md cursor-pointer mb-4"
+    ).props("color=green-7 no-caps").style("padding:10px 22px;")
 
 
 def _empty_state(msg: str, icon: str) -> None:
@@ -1699,15 +1748,15 @@ def _meta_chip(icon: str, text: str, mono: bool = False) -> None:
 
 def _primary_btn_style() -> str:
     return (
-        f"background:{ACCENT}; color:#f0f2f5; font-weight:600;"
-        f"padding:8px 22px; border-radius:6px; border:none; cursor:pointer;"
+        "background:#388e3c; color:#ffffff; font-weight:600;"
+        "padding:10px 22px; border-radius:6px; border:none; cursor:pointer;"
     )
 
 
 def _cancel_style() -> str:
     return (
-        f"background:transparent; color:{TEXT_SEC}; border:1px solid {BORDER};"
-        f"padding:8px 18px; border-radius:6px;"
+        "background:#f9a825; color:#ffffff; font-weight:600;"
+        "padding:10px 22px; border-radius:6px; border:none; cursor:pointer;"
     )
 
 
@@ -1719,13 +1768,15 @@ def _confirm_delete(message: str, on_confirm: Callable[[], None]) -> None:
             f"color:{TEXT_PRI};"
         )
         with ui.row().classes("gap-2.5 justify-end"):
-            ui.button("Cancel", on_click=d.close).style(_cancel_style())
+            ui.button("Cancel", on_click=d.close).classes(
+                "font-semibold rounded-md cursor-pointer"
+            ).props("color=amber-8 no-caps").style("padding:10px 22px;")
 
             def do() -> None:
                 on_confirm()
                 d.close()
 
-            ui.button("Delete", on_click=do).classes("font-semibold rounded-md").style(
-                "background:#c62828; color:white; padding:8px 18px; border:none;"
-            )
+            ui.button("Delete", on_click=do).classes(
+                "font-semibold rounded-md cursor-pointer"
+            ).props("color=red-7 no-caps").style("padding:10px 22px;")
     d.open()
