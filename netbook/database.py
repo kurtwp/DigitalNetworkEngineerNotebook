@@ -535,7 +535,7 @@ def get_path_hops(path_id: int) -> list[sqlite3.Row]:
     try:
         with get_conn() as conn:
             return conn.execute(
-                """SELECT ph.*, d.hostname, d.vendor, c.cid
+                """SELECT ph.*, d.hostname, d.vendor, d.mgmt_ip, c.cid
                    FROM path_hops ph
                    LEFT JOIN devices d ON ph.device_id = d.id
                    LEFT JOIN circuits c ON ph.circuit_id = c.id

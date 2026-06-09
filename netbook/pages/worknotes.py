@@ -67,7 +67,7 @@ def worknotes_page(project_id: int) -> None:
     # ── Page shell ────────────────────────────────────────────────────────────
     with ui.element("div").classes("flex flex-row h-screen overflow-hidden"):
         # Sidebar (rebuilt on navigate to update active state)
-        sidebar_slot = ui.element("div").classes("shrink-0")
+        sidebar_slot = ui.element("div").classes("shrink-0 overflow-y-auto")
 
         def render_sidebar() -> None:
             sidebar_slot.clear()
@@ -83,7 +83,7 @@ def worknotes_page(project_id: int) -> None:
         main = (
             ui.element("div")
             .classes("flex-1 overflow-y-auto")
-            .style(f"background:{DARK_BG}; padding:32px 36px;")
+            .style(f"background:{DARK_BG}; padding:32px 36px; min-height:0; height:100vh;")
         )
 
         def render_content() -> None:
@@ -1074,9 +1074,24 @@ def _section_circuits(project_id: int) -> None:
                                 circuit_db_id = c["id"]
                                 break
 
-                        # Get all devices for device_id lookup
+                        # Get all devices for device_id lookup, create missing ones
                         all_devices = db.get_devices(project_id)
                         device_lookup = {d["hostname"].lower(): d["id"] for d in all_devices}
+
+                        for srv in servers:
+                            tid = srv.get("tid") or ""
+                            if tid and tid.lower() not in device_lookup:
+                                new_id = db.create_device(
+                                    project_id,
+                                    hostname=tid,
+                                    vendor=srv.get("vendor") or "",
+                                    model=srv.get("model") or "",
+                                    mgmt_ip=srv.get("management_ip") or "",
+                                    notes=f"Imported from Granite CID {cid_val}",
+                                )
+                                if new_id:
+                                    device_lookup[tid.lower()] = new_id
+                                    imported_count += 1
 
                         # Create path
                         first_tid = servers[0].get("tid") or "A"
@@ -1087,7 +1102,7 @@ def _section_circuits(project_id: int) -> None:
                             a_side=first_tid,
                             z_side=last_tid,
                             status="active",
-                            notes=f"Auto-created from Granite lookup",
+                            notes="Auto-created from Granite lookup",
                         )
 
                         if path_id:
@@ -1269,8 +1284,24 @@ def _section_circuits(project_id: int) -> None:
                         circuit_db_id = c["id"]
                         break
 
+                # Refresh device list and create any missing devices
                 all_devices = db.get_devices(project_id)
                 device_lookup = {d["hostname"].lower(): d["id"] for d in all_devices}
+
+                for srv in servers:
+                    tid = srv.get("tid") or ""
+                    if tid and tid.lower() not in device_lookup:
+                        new_id = db.create_device(
+                            project_id,
+                            hostname=tid,
+                            vendor=srv.get("vendor") or "",
+                            model=srv.get("model") or "",
+                            mgmt_ip=srv.get("management_ip") or "",
+                            notes=f"Imported from Granite CID {cid_val}",
+                        )
+                        if new_id:
+                            device_lookup[tid.lower()] = new_id
+                            devices_added += 1
 
                 first_tid = servers[0].get("tid") or "A"
                 last_tid = servers[-1].get("tid") or "Z"
@@ -1650,6 +1681,10 @@ def _render_hops(hops: list[sqlite3.Row], hop_col) -> None:
                     ui.label(hop["hostname"] or "—").classes(
                         "font-mono text-[13px] font-semibold"
                     ).style(f"color:{TEXT_PRI};")
+                    if "mgmt_ip" in hop.keys() and hop["mgmt_ip"]:
+                        ui.label(hop["mgmt_ip"]).classes(
+                            "font-mono text-[11px]"
+                        ).style(f"color:{TEXT_SEC};")
                     if hop["vendor"]:
                         vendor_color = JUNIPER if hop["vendor"] == "Juniper" else CISCO
                         ui.label(hop["vendor"]).classes(
